@@ -1,5 +1,9 @@
 import sys
+import os
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout
+import MySQLdb
+from dotenv import load_dotenv
+load_dotenv()
 
 class LoginWindow(QWidget):
     def __init__(self):
@@ -32,9 +36,11 @@ class LoginWindow(QWidget):
         self.setGeometry(300, 300, 400, 200)
 
     def login(self):
+        # debug purposes
         username = self.username_input.text()
         password = self.password_input.text()
         print(f'Username: {username}, Password: {password}')
+        
 
     def signup(self):
         print('Sign up clicked')
