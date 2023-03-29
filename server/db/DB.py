@@ -82,6 +82,7 @@ def main():
 
             python ./DB.py CREATE_USER_TABLE
             python ./DB.py ADD_USER <username> <password>
+            python ./DB.py SELECT_ALL_USERS
         """
         raise Exception(explainer)
 
