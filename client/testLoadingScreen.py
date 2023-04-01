@@ -54,14 +54,17 @@ class LoginWindow(QWidget):
 
         self.setGeometry(300, 300, 400, 200)
 
+
     def login(self):
         # NOTE: Cannot include "-" in username or password
         username = self.username_input.text()
         password = self.password_input.text()
-        self.client.send(username.encode("ascii") + b"-" + password.encode("ascii"))
+        self.client.send(b"LOGIN-" + username.encode("ascii") + b"-" + password.encode("ascii"))
 
     def signup(self):
-        print("Sign up clicked")
+        username = self.username_input.text()
+        password = self.password_input.text()
+        self.client.send(b"SIGNUP-" + username.encode("ascii") + b"-" + password.encode("ascii"))
 
 
 if __name__ == "__main__":

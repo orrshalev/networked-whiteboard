@@ -21,15 +21,13 @@ class DB:
         c = self.conn.cursor()
         c.execute(sql)
 
-    def create_user(self, user: tuple[str, str]) -> int:
+    def create_user(self, username: str, password: str) -> int:
         """
         Create a new user into the users table
         :param user[0]: username
         :param user[1]: non-hashed password
         :return: user id
         """
-        username = user[0]
-        password = user[1]
         salt = os.urandom(32)
         key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100000)
         sql = """ INSERT INTO users(username, password,salt)
@@ -103,8 +101,7 @@ def main():
     elif (
         len(sys.argv) == 4 and sys.argv[1] == "ADD_USER"
     ):  # arg count of 4 based on adding username and password only
-        user = (sys.argv[2], sys.argv[3])
-        user_id = db.create_user(user)  # user_id can be used for relational purposes
+        user_id = db.create_user(sys.argv[2], sys.argv[3])  # user_id can be used for relational purposes
     elif len(sys.argv) == 2 and sys.argv[1] == "SELECT_ALL_USERS":
         db.select_all_users()
     elif len(sys.argv) == 4 and sys.argv[1] == "CHECK_USER":
