@@ -6,6 +6,8 @@ import sys
 
 # window class
 class Window(QMainWindow):
+	global textboxList 
+	textboxList = []
 	def __init__(self):
 		super().__init__()
 
@@ -24,7 +26,7 @@ class Window(QMainWindow):
 		# default drawing flag
 		self.drawing = False
 		# default brush size
-		self.brushSize = 2
+		self.brushSize = 4
 		# default color
 		self.brushColor = Qt.black
 
@@ -36,16 +38,15 @@ class Window(QMainWindow):
 
 		# creating file menu for save and clear action
 		fileMenu = mainMenu.addMenu("File")
-
-		# adding brush size to main menu
-		b_size = mainMenu.addMenu("Brush Size")
         
 		# adding brush color to main menu
 		b_color = mainMenu.addMenu("Brush")
 		
         # adding eraser to main menu
 		eraser = mainMenu.addMenu("Eraser")
-		
+
+		# adding textbox to main menu
+		textbox = mainMenu.addMenu("Textbox")
 
 		# creating save action
 		saveAction = QAction("Save", self)
@@ -64,27 +65,6 @@ class Window(QMainWindow):
 		fileMenu.addAction(clearAction)
 		# adding action to the clear
 		clearAction.triggered.connect(self.clear)
-
-		# creating options for brush sizes
-		# creating action for selecting pixel of 4px
-		pix_4 = QAction("4px", self)
-		# adding this action to the brush size
-		b_size.addAction(pix_4)
-		# adding method to this
-		pix_4.triggered.connect(self.Pixel_4)
-
-		# similarly repeating above steps for different sizes
-		pix_7 = QAction("7px", self)
-		b_size.addAction(pix_7)
-		pix_7.triggered.connect(self.Pixel_7)
-
-		pix_9 = QAction("9px", self)
-		b_size.addAction(pix_9)
-		pix_9.triggered.connect(self.Pixel_9)
-
-		pix_12 = QAction("12px", self)
-		b_size.addAction(pix_12)
-		pix_12.triggered.connect(self.Pixel_12)
 		
 		# creating options for brush color
 		# creating action for black color
@@ -96,23 +76,21 @@ class Window(QMainWindow):
 
 		# POTENTIAL CODE FOR ERASER
 		# similarly repeating above steps for different color
-		white = QAction("White", self)
-		# b_color.addAction(white)
+		white = QAction("Eraser", self)
 		eraser.addAction(white)
 		white.triggered.connect(self.whiteColor)
-		white.triggered.connect(self.Pixel_20)
+		# white.triggered.connect(self.Pixel_20)
 
-		# green = QAction("Green", self)
-		# b_color.addAction(green)
-		# green.triggered.connect(self.greenColor)
+		# POTENTIAL CODE FOR TEXTBOX
+		textboxAction = QAction("Textbox", self)
+		# add action to the textbox
+		textbox.addAction(textboxAction)
+		# add method to the textbox
+		textboxAction.triggered.connect(self.textbox)
 
-		yellow = QAction("Yellow", self)
+		yellow = QAction("Highlighter", self)
 		b_color.addAction(yellow)
 		yellow.triggered.connect(self.yellowColor)
-
-		# red = QAction("Red", self)
-		# b_color.addAction(red)
-		# red.triggered.connect(self.redColor)
 
 
 	# method for checking mouse clicks
@@ -120,10 +98,37 @@ class Window(QMainWindow):
 
 		# if left mouse button is pressed
 		if event.button() == Qt.LeftButton:
+			# if the selected action is textbox
+			if self.drawing == False:
+				self.textbox = QLineEdit(self)
+				self.textbox.move(event.pos())
+				self.textbox.show()
+				# add self.textbox to a list
+				textboxList.append(self.textbox)
+
+			# if self.textbox:
+			# 	# make drawing flag false
+			# 	self.drawing = False
+			# 	# make textbox flag false
+			# 	# self.textbox = False
+			# 	# create a text, ok button
+			# 	text, ok = QInputDialog.getText(self, 'Textbox', '')
+			# 	# if ok button is pressed
+			# 	if ok:
+			# 		# create a painter object
+			# 		painter = QPainter(self.image)
+			# 		# set the pen of the painter
+			# 		painter.setPen(QPen(self.brushColor, self.brushSize,
+			# 						Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+			# 		# draw text on the canvas
+			# 		painter.drawText(event.pos(), text)
+			# 		# update the canvas
+			# 		self.update()
 			# make drawing flag true
 			self.drawing = True
 			# make last point to the point of cursor
 			self.lastPoint = event.pos()
+
 
 	# method for tracking mouse activity
 	def mouseMoveEvent(self, event):
@@ -140,8 +145,8 @@ class Window(QMainWindow):
 			
 			# create an if statement for checking if the selected color is yellow
 			if self.brushColor == Qt.yellow:
-				# if the color is yellow, set the opacity to 0.5
-				painter.setOpacity(0.5)
+				# if the color is yellow, set the opacity to 0.1
+				painter.setOpacity(0.1)
 
 			
 			# draw line from the last point of cursor to the current point
@@ -152,6 +157,7 @@ class Window(QMainWindow):
 			self.lastPoint = event.pos()
 			# update
 			self.update()
+
 
 	# method for mouse left button release
 	def mouseReleaseEvent(self, event):
@@ -181,42 +187,51 @@ class Window(QMainWindow):
 	def clear(self):
 		# make the whole canvas white
 		self.image.fill(Qt.white)
+		# for every textbox in the list
+		for self.textbox in textboxList:
+			# remove the textbox
+			self.textbox.setParent(None)
 		# update
 		self.update()
-
-	# methods for changing pixel sizes
-	def Pixel_4(self):
-		self.brushSize = 4
-
-	def Pixel_7(self):
-		self.brushSize = 7
-
-	def Pixel_9(self):
-		self.brushSize = 9
-
-	def Pixel_12(self):
-		self.brushSize = 12
-
-	# Pixel size for eraser
-	def Pixel_20(self):
-		self.brushSize = 20
 
 	# methods for changing brush color
 	def blackColor(self):
 		self.brushColor = Qt.black
+		self.brushSize = 4
 
 	def whiteColor(self):
 		self.brushColor = Qt.white
-
-	# def greenColor(self):
-	# 	self.brushColor = Qt.green
+		self.brushSize = 20
 
 	def yellowColor(self):
-	 	self.brushColor = Qt.yellow
-
-	# def redColor(self):
-	# 	self.brushColor = Qt.red
-
+		self.brushSize = 12
+		self.brushColor = Qt.yellow
+    
+	# method for textbox
+	def textbox(self, event):
+		# self.textbox = QLineEdit(self)
+		# self.textbox.move(event.pos())
+		# self.textbox.show()
+		self.drawing = False
+		
+		# if self.textbox:
+		# 		# make drawing flag false
+		# 		self.drawing = False
+		# 		# make textbox flag false
+		# 		# self.textbox = False
+		# 		# create a text, ok button
+		# 		text, ok = QInputDialog.getText(self, 'Textbox', '')
+		# 		# if ok button is pressed
+		# 		if ok:
+		# 			# create a painter object
+		# 			painter = QPainter(self.image)
+		# 			# set the pen of the painter
+		# 			painter.setPen(QPen(self.brushColor, self.brushSize,
+		# 							Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+		# 			# draw text on the canvas
+		# 			painter.drawText(event.pos(), text)
+		# 			# update the canvas
+		# 			self.update()
 
 
 # create pyqt5 app
