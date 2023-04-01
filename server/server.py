@@ -24,7 +24,15 @@ def thread_task(c: socket.socket, addr):
             print_lock.release()
             break
 
-        print(f"""New user info recieved: {data}""")
+        print(data)
+        credentials = data.decode("ascii").split('-')
+        
+        username = credentials[0]
+        password = credentials[1]
+
+        print(f"""  New user info recieved: 
+              username: {username}
+              password: {password}""")
 
         # TODO: send confirmation
         # c.send()
