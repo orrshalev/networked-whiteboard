@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import (
 
 HOST = "127.0.0.1"
 PORT = 1100 # see: https://stackoverflow.com/questions/20396820/socket-programing-permission-denied
-
+#new information
 class LoginWindow(QWidget):
 
     def __init__(self):
