@@ -1,4 +1,3 @@
-import hashlib
 import socket
 import ssl
 from _thread import *

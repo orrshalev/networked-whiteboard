@@ -23,7 +23,7 @@ class LoginWindow(QWidget):
         self.client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.client = ssl.wrap_socket(self.client, keyfile="./tls/host.key", certfile="./tls/host.cert")
         self.client.bind((HOST, PORT))
-        self.client.connect(("127.0.0.1", 1500))
+        self.client.connect(("0.0.0.0", 1500))
 
         # UI related
         super().__init__()
