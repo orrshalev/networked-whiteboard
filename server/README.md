@@ -1,4 +1,9 @@
 ## DOCKER COMMANDS:
-(make sure docker daemon is running)
-- sudo docker build -t server-dockerization .
-- sudo docker run server-dockerization
+
+TO BUILD:
+
+`sudo docker build -t whiteboard-server .`
+
+TO RUN
+
+`sudo docker run -ti --rm whiteboard-server`

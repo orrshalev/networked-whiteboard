@@ -1,14 +1,23 @@
-FROM python:3.11
+FROM ubuntu:22.10
 
 EXPOSE 1500
 
-# RUN apt update
-# RUN apt install -y libsasl2-dev python-dev libldap2-dev libssl-dev
+WORKDIR /home
+
+COPY ./ ./
+
+RUN useradd -ms /bin/bash whiteboard-server
+RUN chown -R whiteboard-server:whiteboard-server /home
+RUN chmod 755 -R /home  
+
+RUN apt update
+RUN apt install -y python3
+RUN apt install -y python3-pip
 
 COPY ./requirements.txt ./
 RUN pip install -r requirements.txt
 
-ADD ./ ./
 
-# RUN pip install package_name
-CMD ["python", "-u", "./server.py"]
+USER whiteboard-server
+
+CMD ["bash"]
