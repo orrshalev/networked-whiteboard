@@ -1,4 +1,3 @@
-import hashlib
 import socket
 import ssl
 from _thread import *
@@ -12,8 +11,8 @@ DB_PATH = "./db/app.db"
 print_lock = threading.Lock()  # both main and threads need access to lock
 
 # may need to change this if need to be able to not user localhost
-HOST = "127.0.0.1"
-PORT = 1500
+SERVER_HOST = socket.gethostbyname(socket.gethostname())
+SERVER_PORT = 1500
 
 
 def thread_task(c: socket.socket, addr):
@@ -62,8 +61,8 @@ def main():
         server, server_side=True, keyfile="./tls/host.key", certfile="./tls/host.cert"
     )
 
-    server.bind((HOST, PORT))
-    print(f"socket binded to port {PORT}")
+    server.bind((SERVER_HOST, SERVER_PORT))
+    print(f"socket binded to port {SERVER_PORT}")
 
     server.listen(
         100

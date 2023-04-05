@@ -11,19 +11,26 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
+if len(sys.argv) != 2:
+    raise Exception("Usage: python3 testLoadingScreen <SERVER_HOST>")
 
-HOST = "127.0.0.1"
-PORT = 1100 # see: https://stackoverflow.com/questions/20396820/socket-programing-permission-denied
+
+CLIENT_HOST = socket.gethostbyname(socket.gethostname())
+CLIENT_PORT = 1100  # see: https://stackoverflow.com/questions/20396820/socket-programing-permission-denied
+SERVER_HOST = sys.argv[1]
+SERVER_PORT = 1500
+
 
 class LoginWindow(QWidget):
-
     def __init__(self):
         # connection related
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.client = ssl.wrap_socket(self.client, keyfile="./tls/host.key", certfile="./tls/host.cert")
-        self.client.bind((HOST, PORT))
-        self.client.connect(("127.0.0.1", 1500))
+        self.client = ssl.wrap_socket(
+            self.client, keyfile="./tls/host.key", certfile="./tls/host.cert"
+        )
+        self.client.bind((CLIENT_HOST, CLIENT_PORT))
+        self.client.connect((SERVER_HOST, SERVER_PORT))
 
         # UI related
         super().__init__()
@@ -54,17 +61,20 @@ class LoginWindow(QWidget):
 
         self.setGeometry(300, 300, 400, 200)
 
-
     def login(self):
         # NOTE: Cannot include "-" in username or password
         username = self.username_input.text()
         password = self.password_input.text()
-        self.client.send(b"LOGIN-" + username.encode("ascii") + b"-" + password.encode("ascii"))
+        self.client.send(
+            b"LOGIN-" + username.encode("ascii") + b"-" + password.encode("ascii")
+        )
 
     def signup(self):
         username = self.username_input.text()
         password = self.password_input.text()
-        self.client.send(b"SIGNUP-" + username.encode("ascii") + b"-" + password.encode("ascii"))
+        self.client.send(
+            b"SIGNUP-" + username.encode("ascii") + b"-" + password.encode("ascii")
+        )
 
 
 if __name__ == "__main__":
