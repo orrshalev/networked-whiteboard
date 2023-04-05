@@ -1,7 +1,5 @@
 FROM ubuntu:22.10
 
-EXPOSE 1500
-
 WORKDIR /home
 
 COPY ./ ./
@@ -11,6 +9,7 @@ RUN chown -R whiteboard-server:whiteboard-server /home
 RUN chmod 755 -R /home  
 
 RUN apt update
+RUN apt install -y net-tools
 RUN apt install -y python3
 RUN apt install -y python3-pip
 

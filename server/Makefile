@@ -6,5 +6,6 @@ docker_build:
 
 docker_run:
 	sudo docker run -ti --rm \
-	--network=host \
+	--network whiteboard-network \
+	--publish 1500:1500 \
 	whiteboard-server

@@ -6,5 +6,6 @@ docker_run:
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -e DISPLAY=$DISPLAY \
     -u qtuser \
-    --network=host \
-    whiteboard-client python3 ./testLoadingScreen.py
+    --network whiteboard-network \
+		--publish 1100:1100 \
+    whiteboard-client python3 ./testLoadingScreen.py $(SERVER_HOST)

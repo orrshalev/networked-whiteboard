@@ -1,7 +1,5 @@
 FROM ubuntu:22.10
 
-EXPOSE 1100
-
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN adduser --quiet --disabled-password qtuser && usermod -a -G audio qtuser
