@@ -25,6 +25,8 @@ class Window(QMainWindow):
 
 		# default drawing flag
 		self.drawing = False
+		# default text flag
+		self.text = False
 		# default brush size
 		self.brushSize = 4
 		# default color
@@ -50,8 +52,6 @@ class Window(QMainWindow):
 
 		# creating save action
 		saveAction = QAction("Save", self)
-		# adding short cut for save action
-		saveAction.setShortcut("Ctrl + S")
 		# adding save to the file menu
 		fileMenu.addAction(saveAction)
 		# adding action to the save
@@ -59,8 +59,6 @@ class Window(QMainWindow):
 
 		# creating clear action
 		clearAction = QAction("Clear", self)
-		# adding short cut to the clear action
-		clearAction.setShortcut("Ctrl + C")
 		# adding clear to the file menu
 		fileMenu.addAction(clearAction)
 		# adding action to the clear
@@ -79,56 +77,36 @@ class Window(QMainWindow):
 		white = QAction("Eraser", self)
 		eraser.addAction(white)
 		white.triggered.connect(self.whiteColor)
-		# white.triggered.connect(self.Pixel_20)
+
+		yellow = QAction("Highlighter", self)
+		b_color.addAction(yellow)
+		yellow.triggered.connect(self.yellowColor)
 
 		# POTENTIAL CODE FOR TEXTBOX
 		textboxAction = QAction("Textbox", self)
 		# add action to the textbox
 		textbox.addAction(textboxAction)
 		# add method to the textbox
-		textboxAction.triggered.connect(self.textbox)
-
-		yellow = QAction("Highlighter", self)
-		b_color.addAction(yellow)
-		yellow.triggered.connect(self.yellowColor)
+		textboxAction.triggered.connect(self.textboxPlace)
 
 
 	# method for checking mouse clicks
 	def mousePressEvent(self, event):
 
-		# if left mouse button is pressed
-		if event.button() == Qt.LeftButton:
+		if event.button() == Qt.LeftButton and self.text == True:
 			# if the selected action is textbox
-			if self.drawing == False:
-				self.textbox = QLineEdit(self)
-				self.textbox.move(event.pos())
-				self.textbox.show()
+			self.textbox = QLineEdit(self)
+			self.textbox.move(event.pos())
+			self.textbox.show()
 				# add self.textbox to a list
-				textboxList.append(self.textbox)
+			textboxList.append(self.textbox)
+		# if left mouse button is pressed
+		elif event.button() == Qt.LeftButton:
 
-			# if self.textbox:
-			# 	# make drawing flag false
-			# 	self.drawing = False
-			# 	# make textbox flag false
-			# 	# self.textbox = False
-			# 	# create a text, ok button
-			# 	text, ok = QInputDialog.getText(self, 'Textbox', '')
-			# 	# if ok button is pressed
-			# 	if ok:
-			# 		# create a painter object
-			# 		painter = QPainter(self.image)
-			# 		# set the pen of the painter
-			# 		painter.setPen(QPen(self.brushColor, self.brushSize,
-			# 						Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-			# 		# draw text on the canvas
-			# 		painter.drawText(event.pos(), text)
-			# 		# update the canvas
-			# 		self.update()
 			# make drawing flag true
 			self.drawing = True
 			# make last point to the point of cursor
 			self.lastPoint = event.pos()
-
 
 	# method for tracking mouse activity
 	def mouseMoveEvent(self, event):
@@ -147,7 +125,6 @@ class Window(QMainWindow):
 			if self.brushColor == Qt.yellow:
 				# if the color is yellow, set the opacity to 0.1
 				painter.setOpacity(0.1)
-
 			
 			# draw line from the last point of cursor to the current point
 			# this will draw only one step
@@ -196,43 +173,25 @@ class Window(QMainWindow):
 
 	# methods for changing brush color
 	def blackColor(self):
+		self.text = False
 		self.brushColor = Qt.black
 		self.brushSize = 4
 
 	def whiteColor(self):
+		self.text = False
 		self.brushColor = Qt.white
 		self.brushSize = 20
 
 	def yellowColor(self):
+		self.text = False
 		self.brushSize = 12
 		self.brushColor = Qt.yellow
     
 	# method for textbox
-	def textbox(self, event):
-		# self.textbox = QLineEdit(self)
-		# self.textbox.move(event.pos())
-		# self.textbox.show()
-		self.drawing = False
+	def textboxPlace(self):
 		
-		# if self.textbox:
-		# 		# make drawing flag false
-		# 		self.drawing = False
-		# 		# make textbox flag false
-		# 		# self.textbox = False
-		# 		# create a text, ok button
-		# 		text, ok = QInputDialog.getText(self, 'Textbox', '')
-		# 		# if ok button is pressed
-		# 		if ok:
-		# 			# create a painter object
-		# 			painter = QPainter(self.image)
-		# 			# set the pen of the painter
-		# 			painter.setPen(QPen(self.brushColor, self.brushSize,
-		# 							Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-		# 			# draw text on the canvas
-		# 			painter.drawText(event.pos(), text)
-		# 			# update the canvas
-		# 			self.update()
-
+		self.drawing = False
+		self.text = True
 
 # create pyqt5 app
 App = QApplication(sys.argv)
