@@ -11,8 +11,8 @@ DB_PATH = "./db/app.db"
 print_lock = threading.Lock()  # both main and threads need access to lock
 
 # may need to change this if need to be able to not user localhost
-HOST = "127.0.0.1"
-PORT = 1500
+SERVER_HOST = socket.gethostbyname(socket.gethostname())
+SERVER_PORT = 1500
 
 
 def thread_task(c: socket.socket, addr):
@@ -41,14 +41,19 @@ def thread_task(c: socket.socket, addr):
         elif data[0] == "SIGNUP":
             username = data[1]
             password = data[2]
+            # TODO: if stored users == 150, send error message, else: create new user and send ok
+
             db.create_user(username, password)
-            db.close_connection()
+            c.send(b'OK-')
             break
-            # TODO: send confirmation
+            #db.close_connection()
 
-
-        # TODO: send confirmation
-        # c.send()
+            # if (db.check_user_credentials(username, password)):
+            #     c.send(b'OK-')
+            #     break
+            # else:
+            #     c.send(b'ERROR')
+            #     break
     c.close()
 
 
@@ -61,8 +66,8 @@ def main():
         server, server_side=True, keyfile="./tls/host.key", certfile="./tls/host.cert"
     )
 
-    server.bind((HOST, PORT))
-    print(f"socket binded to port {PORT}")
+    server.bind((SERVER_HOST, SERVER_PORT))
+    print(f"socket binded to port {SERVER_PORT}")
 
     server.listen(
         100
