@@ -4,6 +4,9 @@ import hashlib
 from sqlite3 import Error, Connection
 import sys
 
+WINDOW_WIDTH = 800
+WINDOW_HEIGHT = 600
+
 
 # TODO: limit # of users that can be created
 class DB:
@@ -21,6 +24,47 @@ class DB:
         c = self.conn.cursor()
         c.execute(sql)
 
+    # TODO add user verification
+    def create_room(self, username: str, roomname: str):
+        """
+        Create a new room assigned to a host (user that created room)
+        :param username: username of host
+        :param roomname: room name (visible to others)
+        """
+        room_schema = f"""CREATE TABLE IF NOT EXISTS {roomname} (
+                    x INTEGER NOT NULL,
+                    y INTEGER NOT NULL,
+                    T INTEGER NOT NULL,
+                    text_box text
+                );
+        """
+        c = self.conn.cursor()
+        c.execute(room_schema)
+        table_values = f"""INSERT INTO {roomname} VALUES (?, ?, 3, NULL)"""
+        for x in range(WINDOW_WIDTH):
+            for y in range(WINDOW_HEIGHT):
+                c.execute(table_values, (x, y))
+        self.conn.commit()
+
+    def _check_room(self, roomname: str):
+        c = self.conn.cursor()
+        c.execute(f"SELECT * FROM {roomname}")
+
+        rows = c.fetchall()
+
+        for row in rows:
+            print(row)
+        print(f"Number of pixels: {len(rows)}")
+
+    def close_room(self, roomname: str):
+        """
+        Drops table with roomname
+        :param roomname:
+        """
+        drop_room = f"""DROP TABLE IF EXISTS {roomname} ; """
+        c = self.conn.cursor()
+        c.execute(drop_room)
+
     def create_user(self, username: str, password: str) -> int:
         """
         Create a new user into the users table
@@ -32,20 +76,20 @@ class DB:
         key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100000)
         sql = """ INSERT INTO users(username, password,salt)
                   VALUES(?,?,?) """
-        cur = self.conn.cursor()
-        cur.execute(sql, (username, key, salt))
+        c = self.conn.cursor()
+        c.execute(sql, (username, key, salt))
         self.conn.commit()
-        return cur.lastrowid
+        return c.lastrowid
 
-    def select_all_users(self) -> None:
+    def _select_all_users(self) -> None:
         """
         Query all rows in the users table
         :return:
         """
-        cur = self.conn.cursor()
-        cur.execute("SELECT * FROM users")
+        c = self.conn.cursor()
+        c.execute("SELECT * FROM users")
 
-        rows = cur.fetchall()
+        rows = c.fetchall()
 
         for row in rows:
             print(row)
@@ -54,27 +98,25 @@ class DB:
         """
         Check if user credentials match a value in users table
         """
-        cur = self.conn.cursor()
-        cur.execute(
+        c = self.conn.cursor()
+        c.execute(
             """ SELECT *
                         FROM users
                         WHERE username=?""",
             (username,),
         )
 
-        rows = cur.fetchall()
+        rows = c.fetchall()
 
-        if len(rows) > 0:
-            user = rows[0]
-            key = user[2]
-            salt = user[3]
-            new_key = hashlib.pbkdf2_hmac(
-                "sha256", password.encode("utf-8"), salt, 100000
-            )
-            if key == new_key:
-                return True
+        # No user with this username
+        if len(rows) == 0:
+            return False
 
-        return False
+        user = rows[0]
+        key = user[2]
+        salt = user[3]
+        new_key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100000)
+        return key == new_key
 
     def close_connection(self):
         """
@@ -84,10 +126,13 @@ class DB:
 
 
 def main():
+    def check_arg(length: int, arg: str):
+        return len(sys.argv) == length and sys.argv[1] == arg
+
     database = "./app.db"
     db = DB(database)
 
-    if len(sys.argv) == 2 and sys.argv[1] == "CREATE_USER_TABLE":
+    if check_arg(2, "CREATE_USER_TABLE"):
         user_schema = """CREATE TABLE IF NOT EXISTS users (
                     id integer PRIMARY KEY,
                     username text NOT NULL,
@@ -95,21 +140,26 @@ def main():
                     salt     text NOT NULL
                 ); """
         db._raw_command(user_schema)
-    elif len(sys.argv) == 2 and sys.argv[1] == "DELETE_USER_TABLE":
+    elif check_arg(2, "DELETE_USER_TABLE"):
         delete_user_table = """DROP TABLE IF EXISTS users;"""
         db._raw_command(delete_user_table)
-    elif (
-        len(sys.argv) == 4 and sys.argv[1] == "ADD_USER"
-    ):  # arg count of 4 based on adding username and password only
-        user_id = db.create_user(sys.argv[2], sys.argv[3])  # user_id can be used for relational purposes
-    elif len(sys.argv) == 2 and sys.argv[1] == "SELECT_ALL_USERS":
-        db.select_all_users()
-    elif len(sys.argv) == 4 and sys.argv[1] == "CHECK_USER":
+    elif check_arg(4, "ADD_USER"):
+        user_id = db.create_user(sys.argv[2], sys.argv[3])
+    elif check_arg(2, "SELECT_ALL_USERS"):
+        db._select_all_users()
+    elif check_arg(4, "CHECK_USER"):
         user_exists = db.check_user_credentials(sys.argv[2], sys.argv[3])
         if user_exists:
             print(f"User with credentials {sys.argv[2]} {sys.argv[3]} in table")
         else:
             print(f"User with credentials {sys.argv[2]} {sys.argv[3]} not found")
+    elif check_arg(4, "ADD_ROOM"):
+        db.create_room(sys.argv[2], sys.argv[3])
+    elif check_arg(3, "DELETE_ROOM"):
+        db.close_room(sys.argv[2])
+    elif check_arg(3, "SHOW_ROOM"):
+        db._check_room(sys.argv[2])
+
     else:
         explainer = """
             RUN FROM db DIRECTORY
