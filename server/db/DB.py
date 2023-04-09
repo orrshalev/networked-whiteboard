@@ -61,14 +61,14 @@ class DB:
         c = self.conn.cursor()
         insert_statement = """INSERT INTO active_users(username)
                               VALUES (?)"""
-        c.execute(insert_statement, (username, ))
+        c.execute(insert_statement, (username,))
         self.conn.commit()
 
     def remove_active_user(self, username: str):
         c = self.conn.cursor()
         delete_statement = """DELETE FROM active_users
                               WHERE username = ? ;"""
-        c.execute(delete_statement, (username, ))
+        c.execute(delete_statement, (username,))
 
     def add_user_to_room(self, username: str, roomname: str):
         c = self.conn.cursor()
@@ -107,6 +107,16 @@ class DB:
 
     def update_room_pixel(self, roomname: str, paint_message: bytes) -> None:
         c = self.conn.cursor()
+
+        select_statement = """SELECT * FROM rooms WHERE roomname = ? ;"""
+        c.execute(select_statement, (roomname,))
+        rows = c.fetchall()
+        if len(rows == 0):
+            print(
+                "WARNING: PAINT MESSAGE SENT TO ROOM THAT WAS NOT FOUND IN rooms TABLE"
+            )
+            return
+
         x = int.from_bytes(paint_message[:2], byteorder="big")
         y = int.from_bytes(paint_message[2:4], byteorder="big")
         T = paint_message[4]
@@ -147,7 +157,7 @@ class DB:
         update_statement = """UPDATE rooms
                               SET closed_at = ?
                               WHERE roomname = ?"""
-        c.execute(update_statement, (datetime.datetime.now(), roomname ))
+        c.execute(update_statement, (datetime.datetime.now(), roomname))
         self.conn.commit()
 
     def room_timeout(self, roomname: str) -> bool:
@@ -155,7 +165,7 @@ class DB:
         select_statement = """SELECT closed_at
                               FROM rooms
                               WHERE roomname = ? ;"""
-        c.execute(select_statement, (roomname, ))
+        c.execute(select_statement, (roomname,))
         vals = c.fetchall
         for val in vals:
             print(f"DEBUG STATEMENT: {val}")
@@ -170,7 +180,7 @@ class DB:
         if val is None:
             print(f"ROOM NOT CLOSED")
             return False
-        
+
         time_passed: datetime.timedelta = datetime.datetime.now() - time
         SECONDS_IN_HOUR = 3600
         if time_passed.total_seconds() < SECONDS_IN_HOUR:
@@ -181,17 +191,15 @@ class DB:
         c.execute(drop_statement)
         delete_statement = """DELETE FROM rooms
                               WHERE roomname = ? ;"""
-        c.execute(delete_statement, (roomname, ))
+        c.execute(delete_statement, (roomname,))
         self.conn.commit()
         update_statement = """UPDATE active_users
                               set roomname = NULL
                               WHERE roomname = ? ;"""
-        c.execute(update_statement, (roomname, ))
+        c.execute(update_statement, (roomname,))
         return True
 
         # TODO: send message to users to terminate their session
-
-
 
     def close_room(self, roomname: str):
         """
