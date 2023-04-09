@@ -9,7 +9,7 @@ from db.DB import DB
 
 DB_PATH = "./db/app.db"
 
-print_lock = threading.Lock()  # both main and threads need access to lock
+lock = threading.Lock()  # both main and threads need access to lock
 # for now getting rid of use of lock, might need later so keeping variable
 
 # may need to change this if need to be able to not user localhost
@@ -47,6 +47,14 @@ def thread_task(c: socket.socket, addr):
             db.close_connection()
             break
             # TODO: send confirmation
+
+        elif data[0] == "PAINT":
+            message = data[1]
+            roomname = data[2]
+            ## Locks likely needed, can test without
+            lock.acquire()
+            db.update_room_pixel(roomname, message)
+            lock.release()
 
         # TODO: send confirmation
         # c.send()
