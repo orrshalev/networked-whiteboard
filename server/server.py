@@ -100,6 +100,9 @@ DB_PATH = "./db/app.db"
 
 print_lock = threading.Lock()  # both main and threads need access to lock
 
+lock = threading.Lock()  # both main and threads need access to lock
+# for now getting rid of use of lock, might need later so keeping variable
+
 # may need to change this if need to be able to not user localhost
 SERVER_HOST = socket.gethostbyname(socket.gethostname())
 SERVER_PORT = 1500
@@ -123,6 +126,7 @@ def thread_task(c: socket.socket, addr):
             password = data[2]
             if (db.check_user_credentials(username, password)):
                 c.send(b'OK-')
+                #active_clients.append(addr)
                 break
             else:
                 c.send(b'ERROR')
@@ -135,6 +139,7 @@ def thread_task(c: socket.socket, addr):
 
             db.create_user(username, password)
             c.send(b'OK-')
+            #active_clients.append(addr)
             break
             #db.close_connection()
 
@@ -144,6 +149,14 @@ def thread_task(c: socket.socket, addr):
             # else:
             #     c.send(b'ERROR')
             #     break
+        elif data[0] == "PAINT":
+            message = data[1]
+            roomname = data[2]
+            ## Locks likely needed, can test without
+            lock.acquire()
+            db.update_room_pixel(roomname, message)
+            lock.release()
+
     c.close()
 
 
@@ -171,7 +184,7 @@ def main():
         print_lock.acquire()
         print(f"Connected to : {addr[0]} : {addr[1]}")
 
-        start_new_thread(thread_task, (c, addr, ))
+        start_new_thread(thread_task, (c, addr))
 
 
 

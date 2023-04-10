@@ -62,6 +62,7 @@ class LoginWindow(QWidget):
 
         self.setGeometry(300, 300, 400, 200)
 
+        # self.main_window = MainWindow(self.client)
         self.main_window = MainWindow()
         self.main_window.hide()
 
@@ -82,7 +83,8 @@ class LoginWindow(QWidget):
                 data = self.client.recv(1024)
                 if data == b"OK-":
                     self.main_window.show()
-                    self.close()
+                    # self.close()
+                    self.hide()
                 elif data == b"ERROR":
                     # TODO: handle error case
                     self.error_window = ErrorWindow("Incorrect username/password")
@@ -108,7 +110,8 @@ class LoginWindow(QWidget):
                 print("after recv")
                 if data == b"OK-":
                     self.main_window.show()
-                    self.close()
+                    # self.close()
+                    self.hide()
                 elif data == b"ERROR":
                     print("Maximum number of Users Reached, cannot log in")
                 break
@@ -136,11 +139,19 @@ class ErrorWindow(QWidget):
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
+        #self.client = client
 
         self.setWindowTitle("Main Window")
         self.setGeometry(100,100,800,600)
         self.main_window_label = QLabel("Welcome to the main window!", self)
         self.main_window_label.move(100,100)
+    
+        # self.client.send(b"LIST")
+        # while True:
+        #     response = self.client.recv(1024).decode('utf-8')
+        #     if response.startswith("CLIENTS-"):
+        #         client_list = response[8:].split(",")
+        #         print("Connected clients:", client_list)
         
 if __name__ == "__main__":
     app = QApplication(sys.argv)
