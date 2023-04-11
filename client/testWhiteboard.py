@@ -92,8 +92,11 @@ class Window(QMainWindow):
 
 	# method for checking mouse clicks
 	def mousePressEvent(self, event):
+		x,y
 
 		if event.button() == Qt.LeftButton and self.text == True:
+			x = event.x()
+			y = event.y()
 			# if the selected action is textbox
 			self.textbox = QLineEdit(self)
 			self.textbox.move(event.pos())
@@ -102,7 +105,8 @@ class Window(QMainWindow):
 			textboxList.append(self.textbox)
 		# if left mouse button is pressed
 		elif event.button() == Qt.LeftButton:
-
+			x = event.x()
+			y = event.y()
 			# make drawing flag true
 			self.drawing = True
 			# make last point to the point of cursor
