@@ -3,6 +3,7 @@ import ssl
 from _thread import *
 import threading
 import ssl
+from queue import Queue
 
 # all above from from stdlib
 from db.DB import DB
@@ -17,10 +18,10 @@ SERVER_HOST = socket.gethostbyname(socket.gethostname())
 SERVER_PORT = 1500
 
 
-def thread_task(c: socket.socket, addr):
+def thread_task(server: socket.socket, addr):
     db = DB(DB_PATH)
     while True:
-        data = c.recv(1024)
+        data = server.recv(1024)
 
         if not data:
             print(f"Data not recieved correctly from : {addr[0]} : {addr[1]}")
@@ -34,10 +35,10 @@ def thread_task(c: socket.socket, addr):
             username = data[1]
             password = data[2]
             if db.check_user_credentials(username, password):
-                c.send(b"OK-")
+                server.send(b"OK-")
                 break
             else:
-                c.send(b"ERROR")
+                server.send(b"ERROR-")
                 break
 
         elif data[0] == "SIGNUP":
@@ -47,18 +48,28 @@ def thread_task(c: socket.socket, addr):
             db.close_connection()
             break
             # TODO: send confirmation
+        elif data[0] == "JOINROOM":
+            username = data[1]
+            roomname = data[2]
+            if db.join_room(roomname, username):
+                server.send(b"JOINROOM-")
+            else:
+                server.send(b"NOJOINROOM-")
 
         elif data[0] == "PAINT":
             message = data[1]
             roomname = data[2]
             ## Locks likely needed, can test without
-            lock.acquire()
-            db.update_room_pixel(roomname, message)
-            lock.release()
+            if (db.room_paintable()):
+                lock.acquire()
+                db.update_room_pixel(roomname, message)
+                lock.release()
+            else:
+                server.send(b"EXITROOM-")
 
         # TODO: send confirmation
         # c.send()
-    c.close()
+    server.close()
 
 
 def main():

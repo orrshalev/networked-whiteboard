@@ -70,13 +70,14 @@ class DB:
                               WHERE username = ? ;"""
         c.execute(delete_statement, (username,))
 
-    def add_user_to_room(self, username: str, roomname: str):
+    def join_room(self, username: str, roomname: str) -> bool:
         c = self.conn.cursor()
         update_statement = """UPDATE active_users
                               SET roomname = ?
                               WHERE username = ? ;"""
         c.execute(update_statement, (roomname, username))
         self.conn.commit()
+        return True
 
     # TODO add user verification
     def create_room(self, username: str, roomname: str):
@@ -160,13 +161,32 @@ class DB:
         c.execute(update_statement, (datetime.datetime.now(), roomname))
         self.conn.commit()
 
-    def room_timeout(self, roomname: str) -> bool:
+    def room_paintable(self, roomname:str) -> bool: 
         c = self.conn.cursor()
         select_statement = """SELECT closed_at
                               FROM rooms
                               WHERE roomname = ? ;"""
         c.execute(select_statement, (roomname,))
-        vals = c.fetchall
+        vals = c.fetchall()
+        for val in vals:
+            print(f"DEBUG STATEMENT: {val}")
+
+        if len(vals) == 0:
+            print("WARNING: ROOM NOT FOUND")
+            return False
+        if vals[0] is None:
+            return True
+
+        return False # room is in recovery mode
+
+    def room_joinable(self, roomname: str, username: str) -> bool:
+        c = self.conn.cursor()
+        # check if room exists
+        select_statement = """SELECT closed_at
+                              FROM rooms
+                              WHERE roomname = ? ;"""
+        c.execute(select_statement, (roomname,))
+        vals = c.fetchall()
         for val in vals:
             print(f"DEBUG STATEMENT: {val}")
 
@@ -174,18 +194,19 @@ class DB:
             print("WARNING: ROOM NOT FOUND")
             return False
 
+        # check timeout
         # check if this works
         time: datetime.datetime = vals[0][0]
 
-        if val is None:
-            print(f"ROOM NOT CLOSED")
-            return False
+        # host did not leave; can join room
+        if vals[0] is None:
+            return True
 
         time_passed: datetime.timedelta = datetime.datetime.now() - time
         SECONDS_IN_HOUR = 3600
+        # not timed out
         if time_passed.total_seconds() < SECONDS_IN_HOUR:
-            print("ROOM NOT TIMED OUT")
-            return False
+            return True
 
         drop_statement = f"""DROP TABLE IF EXISTS {roomname} ;"""
         c.execute(drop_statement)
@@ -197,7 +218,7 @@ class DB:
                               set roomname = NULL
                               WHERE roomname = ? ;"""
         c.execute(update_statement, (roomname,))
-        return True
+        return False
 
         # TODO: send message to users to terminate their session
 
