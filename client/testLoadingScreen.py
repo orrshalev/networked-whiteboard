@@ -6,14 +6,8 @@ import ssl
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
-# from PyQt5.QtWidgets import (
-#     QApplication,
-#     QWidget,
-#     QLabel,
-#     QLineEdit,
-#     QPushButton,
-#     QVBoxLayout,
-# )
+from ssl import SSLSocket
+from QTWorkers import Worker
 
 if len(sys.argv) != 2:
     raise Exception("Usage: python3 testLoadingScreen <SERVER_HOST>")
@@ -25,13 +19,16 @@ SERVER_HOST = sys.argv[1]
 SERVER_PORT = 1500
 
 class LoginWindow(QWidget):
+
+    #client: SSLSocket
+
     def __init__(self):
         # connection related
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.client = ssl.wrap_socket(
-            self.client, keyfile="./tls/host.key", certfile="./tls/host.cert"
-        )
+        # self.client = ssl.wrap_socket(
+        #     self.client, keyfile="./tls/host.key", certfile="./tls/host.cert"
+        # )
         self.client.bind((CLIENT_HOST, CLIENT_PORT))
         self.client.connect((SERVER_HOST, SERVER_PORT))
 
@@ -63,12 +60,12 @@ class LoginWindow(QWidget):
         self.setLayout(vbox)
 
         self.setGeometry(300, 300, 400, 200)
-
-        # self.main_window = MainWindow()
+			
+    def login(self):
         self.wb_window = WhiteboardWindow(self.client)
         self.wb_window.hide()
-
-    def login(self):
+        # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
+	
         # NOTE: Cannot include "-" in username or password
         username = self.username_input.text()
         password = self.password_input.text()
@@ -83,20 +80,26 @@ class LoginWindow(QWidget):
             rlist, wlist, xlist = select.select([self.client], [], [], 0.1)
             if rlist:
                 data = self.client.recv(1024)
-                if data == b"OK-":
+                if data == b"OK-": 
+                    self.wb_window.run_threads()
                     self.wb_window.show()
-                    # self.close()
+                    # self.wb_window = WhiteboardWindow(self.client)
+                    # self.wb_window.show()
                     self.hide()
+		    
                 elif data == b"ERROR":
                     # TODO: handle error case
                     self.error_window = ErrorWindow("Incorrect username/password")
                     self.error_window.show()
                 break
 
-
     def signup(self):
+	    
         username = self.username_input.text()
         password = self.password_input.text()
+        self.wb_window = WhiteboardWindow(self.client)
+        self.wb_window.hide()
+	
         print("gets here in signup")
         self.client.send(
             b"SIGNUP-" + username.encode("ascii") + b"-" + password.encode("ascii")
@@ -119,11 +122,11 @@ class LoginWindow(QWidget):
                 break
 
 class ErrorWindow(QWidget):
-    def __init__(self, message, login_window):
+    def __init__(self, message):
         super().__init__()
 
         #self.main_window = LoginWindow()
-        self.login_window = login_window
+        # self.login_window = login_window
 
         self.setWindowTitle("Error")
         self.setGeometry(100,100,400,150)
@@ -133,36 +136,21 @@ class ErrorWindow(QWidget):
         self.ok_button.move(150,100)
         self.ok_button.clicked.connect(self.close)
 
-        self.move(
-            self.login_window.pos().x() + (self.login_window.width() - self.width()) / 2,
-            self.login_window.pos().y() + (self.login_window.height() - self.height()) / 2
-        )
+        # self.move(
+        #     self.login_window.pos().x() + (self.login_window.width() - self.width()) / 2,
+        #     self.login_window.pos().y() + (self.login_window.height() - self.height()) / 2
+        # )
 
-# class MainWindow(QWidget):
-#     def __init__(self):
-#         super().__init__()
-#         #self.client = client
-
-#         self.setWindowTitle("Main Window")
-#         self.setGeometry(100,100,800,600)
-#         self.main_window_label = QLabel("Welcome to the main window!", self)
-#         self.main_window_label.move(100,100)
-    
-        # self.client.send(b"LIST")
-        # while True:
-        #     response = self.client.recv(1024).decode('utf-8')
-        #     if response.startswith("CLIENTS-"):
-        #         client_list = response[8:].split(",")
-        #         print("Connected clients:", client_list)
+		
         
 # window class
 class WhiteboardWindow(QMainWindow):
-# class WhiteboardWindow(QWidget):
 	global textboxList 
 	textboxList = []
+	# submitClicked = qtc.pyqtSignal()
 	def __init__(self, client):
-		self.client = client
 		super().__init__()
+		self.client = client
 
 		# setting title
 		self.setWindowTitle("Whiteboard Demo")
@@ -172,6 +160,10 @@ class WhiteboardWindow(QMainWindow):
 
 		# creating image object
 		self.image = QImage(self.size(), QImage.Format_RGB32)
+
+		self.worker = Worker(self.client)
+		self.worker.signals.pixel.connect(self.server_paint)
+		self.threadpool = QThreadPool()
 
 		# making image color to white
 		self.image.fill(Qt.white)
@@ -242,7 +234,40 @@ class WhiteboardWindow(QMainWindow):
 		# add method to the textbox
 		textboxAction.triggered.connect(self.textboxPlace)
 
+	def run_threads(self):
+		self.threadpool.start(self.worker)
 
+	def server_paint(self, message: bytes): 
+		x = int.from_bytes(message[:2], byteorder="big") 
+		y = int.from_bytes(message[2:4], byteorder="big") 
+		T = message[4]
+		painter = QPainter(self.image)
+		if T == 1:
+			painter.setPen(QPen(Qt.black, 4,
+							Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+		elif T == 2:
+			painter.setPen(QPen(Qt.yellow, 12,
+							Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+			painter.setOpacity(0.1)
+		elif T == 3:
+			painter.setPen(QPen(Qt.white, 20,
+							Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+		elif T == 4:
+			self.image.fill(Qt.white)
+			for self.textbox in textboxList:
+				self.textbox.setParent(None)
+			self.update()
+			return
+		painter.drawPoint(x, y)
+		self.update()
+
+	def handle_data_received(self, data):
+			if data == b"OK-":
+				print("The pixels work")
+			elif data == b"ERROR":
+				self.error_window = ErrorWindow("Error with pixel sending")
+				self.error_window.show()
+				
 	# method for checking mouse clicks
 	def mousePressEvent(self, event):
 		#x,y
@@ -266,24 +291,13 @@ class WhiteboardWindow(QMainWindow):
 			message = xbytes + ybytes + T_bytes
 			roomname = "test"
 			self.client.send(
-				b"PAINT-" + roomname.encode("ascii") + b"-" + message.encode("ascii")
+				b"PAINT-" + message + b"-" + roomname.encode("ascii")
 		    )
-			
-            # wait for response from server
-            while True:
-            # check if data is available to be received without blocking
-                rlist, wlist, xlist = select.select([self.client], [], [], 0.1)
-                if rlist:
-                    data = self.client.recv(1024)
-                    if data == b"OK-":
-                        print("The pixels work")
-                    elif data == b"ERROR":
-                        # TODO: handle error case
-                        self.error_window = ErrorWindow("Error with pixel sending")
-                    break
+			print("sent to server")
+            # # wait for response from server
 		
 			# self.client.send()
-			# if the selected action is textbox
+			# if the selected action is textbox 
 			self.textbox = QLineEdit(self)
 			self.textbox.move(event.pos())
 			self.textbox.show()
@@ -293,14 +307,36 @@ class WhiteboardWindow(QMainWindow):
 
 		# if left mouse button is pressed
 		elif event.button() == Qt.LeftButton:
+			print("gets here click")
 			x = event.x()
 			y = event.y()
 			# make drawing flag true
 			self.drawing = True
 			# make last point to the point of cursor
 			self.lastPoint = event.pos()
-			print(f"Mouse clicked at ({x}, {y})")
-
+			xbytes = x.to_bytes(2, byteorder='big')
+			ybytes = y.to_bytes(2, byteorder='big')
+			if self.brushColor == Qt.black:
+				T = 1
+				T_bytes = T.to_bytes(1, byteorder='big')
+			elif self.brushColor == Qt.yellow:
+				T = 2
+				T_bytes = T.to_bytes(1, byteorder='big')
+			elif self.brushColor == Qt.white:
+				T = 3
+				T_bytes = T.to_bytes(1, byteorder='big')
+	
+			message = xbytes + ybytes + T_bytes
+			roomname = "test"
+			self.client.send(
+				b"PAINT-" + message + b"-" + roomname.encode("ascii")
+		    )
+			print("sent to server")
+			# self.worker = Worker(self.client)
+			# # self.worker.client = self.client
+			# self.worker.data_received.connect(self.handle_data_received)
+			# self.worker.start()
+            # wait for response from server
 
 	# method for tracking mouse activity
 	def mouseMoveEvent(self, event):
@@ -317,7 +353,27 @@ class WhiteboardWindow(QMainWindow):
 			if self.brushColor == Qt.yellow:
 				# if the color is yellow, set the opacity to 0.1
 				painter.setOpacity(0.1)
-			
+			x = event.x()
+			y = event.y()
+			print(f"Mouse moved at ({x}, {y})")
+			xbytes = x.to_bytes(2, byteorder='big')
+			ybytes = y.to_bytes(2, byteorder='big')
+			if self.brushColor == Qt.black:
+				T = 1
+				T_bytes = T.to_bytes(1, byteorder='big')
+			elif self.brushColor == Qt.yellow:
+				T = 2
+				T_bytes = T.to_bytes(1, byteorder='big')
+			elif self.brushColor == Qt.white:
+				T = 3
+				T_bytes = T.to_bytes(1, byteorder='big')
+	
+			message = xbytes + ybytes + T_bytes
+			roomname = "test"
+			self.client.send(
+				b"PAINT-" + message + b"-" + roomname.encode("ascii")
+		    )
+	
 			# draw line from the last point of cursor to the current point
 			# this will draw only one step
 			painter.drawLine(self.lastPoint, event.pos())
@@ -331,9 +387,6 @@ class WhiteboardWindow(QMainWindow):
 	def mouseReleaseEvent(self, event):
 
 		if event.button() == Qt.LeftButton:
-			x = event.x()
-			y = event.y()
-			print(f'x: {x}, y: {y}')
 			# make drawing flag false
 			self.drawing = False
 

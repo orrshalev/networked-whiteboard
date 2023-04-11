@@ -1,22 +1,9 @@
-FROM ubuntu:22.10
+FROM python:3.11
 
-WORKDIR /home
+WORKDIR /app
 
-COPY ./ ./
+COPY . .
 
-RUN useradd -ms /bin/bash whiteboard-server
-RUN chown -R whiteboard-server:whiteboard-server /home
-RUN chmod 755 -R /home  
+RUN pip3 install -r requirements.txt
 
-RUN apt update
-RUN apt install -y net-tools
-RUN apt install -y python3
-RUN apt install -y python3-pip
-
-COPY ./requirements.txt ./
-RUN pip install -r requirements.txt
-
-
-USER whiteboard-server
-
-CMD ["bash"]
+CMD ["python3", "-m", "server"]

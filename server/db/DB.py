@@ -111,7 +111,7 @@ class DB:
         select_statement = """SELECT * FROM rooms WHERE roomname = ? ;"""
         c.execute(select_statement, (roomname,))
         rows = c.fetchall()
-        if len(rows == 0):
+        if len(rows) == 0:
             print(
                 "WARNING: PAINT MESSAGE SENT TO ROOM THAT WAS NOT FOUND IN rooms TABLE"
             )
@@ -239,6 +239,7 @@ class DB:
         c = self.conn.cursor()
         c.execute(sql, (username, key, salt))
         self.conn.commit()
+        print(f"User {username} created")
         return c.lastrowid
 
     def _select_all_users(self) -> None:
