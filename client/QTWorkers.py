@@ -37,6 +37,7 @@ class Worker(QRunnable):
             print(data)
             data = data.split(b'-')
             if data[0].decode('ascii') == 'PAINT':
+                print(data[1])
                 self.signals.pixel.emit(data[1])
             
 

@@ -333,7 +333,6 @@ class WhiteboardWindow(QMainWindow):
 			self.client.send(
 				b"PAINT-" + message + b"-" + roomname.encode("ascii")
 		    )
-			print("sent to server")
 			# self.worker = Worker(self.client)
 			# # self.worker.client = self.client
 			# self.worker.data_received.connect(self.handle_data_received)

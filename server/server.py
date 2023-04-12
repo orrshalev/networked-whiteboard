@@ -27,9 +27,7 @@ def paint_handler(server: socket.socket, condition: threading.Condition, user: U
     pass
 
 
-def client_thread(
-    server: socket.socket, addr, user: User
-):
+def client_thread(server: socket.socket,  addr, condition: threading.Condition, user: User):
     db = DB(DB_PATH)
     while True:
         data = server.recv(1024)
@@ -61,14 +59,16 @@ def client_thread(
 
         elif data[0].decode("ascii") == "PAINT":
             message = data[1]
-            roomname = data[2].decode("ascii")
+            roomname = data[2].decode(
+                "ascii"
+            )  # NOTE: sometimes this is wrong, prints testPAINT
             ## Locks likely needed, can test without
             # lock.acquire()
             db.update_room_pixel(roomname, message)
             # lock.release()
             print(f"PAINT RECIEVED, message is: {message}, roomname is {roomname}")
-            if roomname == user.roomname:
-                server.send(b"PAINT-" + message)
+            # This is a reminder why I needed to implement a condition:
+            # server.send(b"PAINT-" + message)
 
         # TODO: send confirmation
         # c.send()
@@ -93,6 +93,7 @@ def main():
     # may need to do more to ensure can't have more than 100 active users
     print("Listening...")
     # paint_handler goes outside while loop; should only have 1 exist
+    paint_condition = threading.Condition()
     while True:
         c, addr = server.accept()
 
@@ -100,9 +101,7 @@ def main():
         print(f"Connected to : {addr[0]} : {addr[1]}")
 
         user = User()
-        client_listener = threading.Thread(
-            target=client_thread, args=(c, addr, user)
-        )
+        client_listener = threading.Thread(target=client_thread, args=(c, addr, paint_condition, user))
         client_listener.start()
 
 
