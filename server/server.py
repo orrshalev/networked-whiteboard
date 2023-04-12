@@ -17,10 +17,19 @@ lock = threading.Lock()  # both main and threads need access to lock
 SERVER_HOST = socket.gethostbyname(socket.gethostname())
 SERVER_PORT = 1500
 
-def paint_handler(server: socket.socket, addr, q: Queue):
+
+class User:
+    username: str = None
+    roomname: str = "test"
+
+
+def paint_handler(server: socket.socket, condition: threading.Condition, user: User):
     pass
 
-def client_thread(server: socket.socket, addr, q: Queue):
+
+def client_thread(
+    server: socket.socket, addr, user: User
+):
     db = DB(DB_PATH)
     while True:
         data = server.recv(1024)
@@ -34,13 +43,14 @@ def client_thread(server: socket.socket, addr, q: Queue):
         data = data.split(b"-")
         # data = data.decode("ascii", errors="ignore").split("-")
 
-        if data[0].decode('ascii') == "LOGIN":
+        if data[0].decode("ascii") == "LOGIN":
             username = data[1].decode("ascii")
             password = data[2].decode("ascii")
             if db.check_user_credentials(username, password):
-                c.send(b"OK-")
+                server.send(b"OK-")
+                user.username = username
             else:
-                c.send(b"ERROR")
+                server.send(b"ERROR")
 
         elif data[0].decode("ascii") == "SIGNUP":
             username = data[1].decode("ascii")
@@ -49,16 +59,16 @@ def client_thread(server: socket.socket, addr, q: Queue):
             # TODO: send confirmation
             server.send(b"OK-")
 
-        elif data[0].decode('ascii') == "PAINT":
+        elif data[0].decode("ascii") == "PAINT":
             message = data[1]
             roomname = data[2].decode("ascii")
             ## Locks likely needed, can test without
-            #lock.acquire()
+            # lock.acquire()
             db.update_room_pixel(roomname, message)
-            #lock.release()
+            # lock.release()
             print(f"PAINT RECIEVED, message is: {message}, roomname is {roomname}")
-            TEST_PAINT_MESSAGE = b"PAINT-" + (100).to_bytes(2, "big") + (100).to_bytes(2, "big") + (1).to_bytes(1, "big")
-            server.send(TEST_PAINT_MESSAGE)
+            if roomname == user.roomname:
+                server.send(b"PAINT-" + message)
 
         # TODO: send confirmation
         # c.send()
@@ -89,13 +99,11 @@ def main():
         # print_lock.acquire()
         print(f"Connected to : {addr[0]} : {addr[1]}")
 
-        start_new_thread(
-            client_thread,
-            (
-                c,
-                addr,
-            ),
+        user = User()
+        client_listener = threading.Thread(
+            target=client_thread, args=(c, addr, user)
         )
+        client_listener.start()
 
 
 if __name__ == "__main__":
