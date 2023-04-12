@@ -21,7 +21,42 @@ class User:
     username: str = None
     roomname: str = "test"
 
+def handle_message(line: bytes, server: socket.socket, connections: dict[str, tuple[socket.socket, str]], db: DB):
+    line = line.split(b"-")
+    # data = data.decode("ascii", errors="ignore").split("-")
 
+    if line[0].decode("ascii") == "LOGIN":
+        username = line[1].decode("ascii")
+        password = line[2].decode("ascii")
+        if db.check_user_credentials(username, password):
+            server.send(b"OK\r\n")
+            connections[username] = (server, "test")
+        else:
+            server.send(b"ERROR\r\n")
+
+    elif line[0].decode("ascii") == "SIGNUP":
+        username = line[1].decode("ascii")
+        password = line[2].decode("ascii")
+        db.create_user(username, password)
+        # TODO: send confirmation
+        server.send(b"OK\r\n")
+
+    elif line[0].decode("ascii") == "PAINT":
+        message = line[1]
+        print(line[2])
+        roomname = line[2].decode(
+            "ascii"
+        )  # NOTE: sometimes this is wrong, prints testPAINT
+        ## Locks likely needed, can test without
+        # lock.acquire()
+        db.update_room_pixel(roomname, message)
+        # lock.release()
+        # print(f"PAINT RECIEVED, message is: {message}, roomname is {roomname}")
+        # This is a reminder why I needed to implement a condition:
+        # server.send(b"PAINT-" + message)
+        for connection, paint_roomname in connections.values():
+            if paint_roomname == roomname:
+                connection.send(b"PAINT-" + message + b"\r\n")
 
 def client_thread(
         server: socket.socket, addr, user: User, connections: dict[str, tuple[socket.socket, str]]
@@ -30,53 +65,28 @@ def client_thread(
     :param connections: Username to connection and roomname
     """
     db = DB(DB_PATH)
+    data = b""
     while True:
-        data = server.recv(1024)
-
-        if not data:
+        try:
+            data += server.recv(1024)
+        except TypeError:
             print(f"Data not recieved correctly from : {addr[0]} : {addr[1]}")
             # print_lock.release()
             break
+        # lines = data.split(keepends=True)
+        lines = [line + b"\r\n" for line in data.split(b"\r\n") if line]
+        full_lines, last_line = lines[:-1], lines[-1]
+        # print(f"full_lines: {full_lines}, last_line: {last_line}")
+        for line in full_lines:
+            handle_message(line[:-2], server, connections, db)
+        if last_line.endswith(b"\r\n"):
+            handle_message(last_line[:-2], server, connections, db)
+            data = b""
+        else:
+            data = last_line
+        
 
-        # TODO: Maybe do error handeling
-        data = data.split(b"-")
-        # data = data.decode("ascii", errors="ignore").split("-")
-
-        if data[0].decode("ascii") == "LOGIN":
-            username = data[1].decode("ascii")
-            password = data[2].decode("ascii")
-            if db.check_user_credentials(username, password):
-                server.send(b"OK-")
-                connections[username] = (server, "test")
-            else:
-                server.send(b"ERROR")
-
-        elif data[0].decode("ascii") == "SIGNUP":
-            username = data[1].decode("ascii")
-            password = data[2].decode("ascii")
-            db.create_user(username, password)
-            # TODO: send confirmation
-            server.send(b"OK-")
-
-        elif data[0].decode("ascii") == "PAINT":
-            message = data[1]
-            roomname = data[2].decode(
-                "ascii"
-            )  # NOTE: sometimes this is wrong, prints testPAINT
-            ## Locks likely needed, can test without
-            # lock.acquire()
-            db.update_room_pixel(roomname, message)
-            # lock.release()
-            print(f"PAINT RECIEVED, message is: {message}, roomname is {roomname}")
-            # This is a reminder why I needed to implement a condition:
-            # server.send(b"PAINT-" + message)
-            for connection, paint_roomname in connections.values():
-                if paint_roomname == roomname:
-                    connection.send(b"PAINT-" + message)
-                
-
-        # TODO: send confirmation
-        # c.send()
+    # TODO: send confirmation
     server.close()
 
 

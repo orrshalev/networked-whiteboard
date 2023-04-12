@@ -77,19 +77,19 @@ class LoginWindow(QWidget):
         username = self.username_input.text()
         password = self.password_input.text()
         self.client.send(
-            b"LOGIN-" + username.encode("ascii") + b"-" + password.encode("ascii")
+            b"LOGIN-" + username.encode("ascii") + b"-" + password.encode("ascii") + b"\r\n"
         )
 
         # check if data is available to be received without blocking
         data = self.client.recv(1024)
-        if data == b"OK-": 
+        if data[:-2] == b"OK": 
             self.wb_window.run_threads()
             self.wb_window.show()
             # self.wb_window = WhiteboardWindow(self.client)
             # self.wb_window.show()
             self.hide()
     
-        elif data == b"ERROR":
+        elif data[:-2] == b"ERROR":
             # TODO: handle error case
             self.error_window = ErrorWindow("Incorrect username/password")
             self.error_window.show()
@@ -104,31 +104,21 @@ class LoginWindow(QWidget):
 	
         print("gets here in signup")
         self.client.send(
-            b"SIGNUP-" + username.encode("ascii") + b"-" + password.encode("ascii")
+            b"SIGNUP-" + username.encode("ascii") + b"-" + password.encode("ascii") + b"\r\n"
         )
 
         #wait for response from server
-        while True:
-            # check if data is available to be received without blocking
-            rlist, wlist, xlist = select.select([self.client], [], [], 0.1)
-            if rlist:
-                print("got here")
-                data = self.client.recv(1024)
-                print("after recv")
-                if data == b"OK-":
-                    self.wb_window.show()
-                    # self.close()
-                    self.hide()
-                elif data == b"ERROR":
-                    print("Maximum number of Users Reached, cannot log in")
-                break
+        data = self.client.recv(1024)
+        if data[:-2] == b"OK":
+            self.wb_window.show()
+			# self.close()
+            self.hide()
+        elif data[:-2] == b"ERROR":
+           print("Maximum number of Users Reached, cannot log in")
 
 class ErrorWindow(QWidget):
     def __init__(self, message):
         super().__init__()
-
-        #self.main_window = LoginWindow()
-        # self.login_window = login_window
 
         self.setWindowTitle("Error")
         self.setGeometry(100,100,400,150)
@@ -136,14 +126,7 @@ class ErrorWindow(QWidget):
         self.error_label.move(50, 50)
         self.ok_button = QPushButton("OK", self)
         self.ok_button.move(150,100)
-        self.ok_button.clicked.connect(self.close)
-
-        # self.move(
-        #     self.login_window.pos().x() + (self.login_window.width() - self.width()) / 2,
-        #     self.login_window.pos().y() + (self.login_window.height() - self.height()) / 2
-        # )
-
-		
+        self.ok_button.clicked.connect(self.close)	
         
 # window class
 class WhiteboardWindow(QMainWindow):
@@ -264,9 +247,9 @@ class WhiteboardWindow(QMainWindow):
 		self.update()
 
 	def handle_data_received(self, data):
-			if data == b"OK-":
+			if data[:-2] == b"OK":
 				print("The pixels work")
-			elif data == b"ERROR":
+			elif data[:-2] == b"ERROR":
 				self.error_window = ErrorWindow("Error with pixel sending")
 				self.error_window.show()
 				
@@ -292,13 +275,10 @@ class WhiteboardWindow(QMainWindow):
 	
 			message = xbytes + ybytes + T_bytes
 			roomname = "test"
-			self.client.send(
-				b"PAINT-" + message + b"-" + roomname.encode("ascii")
-		    )
-			print("sent to server")
-            # # wait for response from server
+			# self.client.send(
+			# 	b"PAINT-" + message + b"-" + roomname.encode("ascii") + b"\r\n"
+		    # )
 		
-			# self.client.send()
 			# if the selected action is textbox 
 			self.textbox = QLineEdit(self)
 			self.textbox.move(event.pos())
@@ -309,7 +289,6 @@ class WhiteboardWindow(QMainWindow):
 
 		# if left mouse button is pressed
 		elif event.button() == Qt.LeftButton:
-			print("gets here click")
 			x = event.x()
 			y = event.y()
 			# make drawing flag true
@@ -331,13 +310,8 @@ class WhiteboardWindow(QMainWindow):
 			message = xbytes + ybytes + T_bytes
 			roomname = "test"
 			self.client.send(
-				b"PAINT-" + message + b"-" + roomname.encode("ascii")
+				b"PAINT-" + message + b"-" + roomname.encode("ascii") + b"\r\n"
 		    )
-			# self.worker = Worker(self.client)
-			# # self.worker.client = self.client
-			# self.worker.data_received.connect(self.handle_data_received)
-			# self.worker.start()
-            # wait for response from server
 
 	# method for tracking mouse activity
 	def mouseMoveEvent(self, event):
@@ -372,7 +346,7 @@ class WhiteboardWindow(QMainWindow):
 			message = xbytes + ybytes + T_bytes
 			roomname = "test"
 			self.client.send(
-				b"PAINT-" + message + b"-" + roomname.encode("ascii")
+				b"PAINT-" + message + b"-" + roomname.encode("ascii") + b"\r\n"
 		    )
 	
 			# draw line from the last point of cursor to the current point
