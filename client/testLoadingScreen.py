@@ -274,22 +274,11 @@ class WhiteboardWindow(QMainWindow):
 			# turns the x and y values into 2 bytes to send to server
 			xbytes = x.to_bytes(2, byteorder='big')
 			ybytes = y.to_bytes(2, byteorder='big')
-			if self.brushColor == Qt.black:
-				T = 1
-				T_bytes = T.to_bytes(1, byteorder='big')
-			elif self.brushColor == Qt.yellow:
-				T = 2
-				T_bytes = T.to_bytes(1, byteorder='big')
-			elif self.brushColor == Qt.white:
-				T = 3
-				T_bytes = T.to_bytes(1, byteorder='big')
+			T = 5
+			T_bytes = T.to_bytes(1, byteorder='big')
 	
 			message = xbytes + ybytes + T_bytes
 			roomname = "test"
-			self.client.send(
-				b"PAINT-" + message + b"-" + roomname.encode("ascii")
-		    )
-			print("sent to server")
             # # wait for response from server
 		
 			# self.client.send()
@@ -300,6 +289,12 @@ class WhiteboardWindow(QMainWindow):
 				# add self.textbox to a list
 			textboxList.append(self.textbox)
 			print(f"Mouse clicked at ({x}, {y})")
+			
+			print("gets here for textbox")
+			self.client.send(
+				b"PAINT-" + message + b"-" + roomname.encode("ascii")
+		    )
+			print("sent to server")
 
 		# if left mouse button is pressed
 		elif event.button() == Qt.LeftButton:
