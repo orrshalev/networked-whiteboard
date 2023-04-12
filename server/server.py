@@ -22,9 +22,6 @@ class User:
     roomname: str = "test"
 
 
-def paint_handler(server: socket.socket, condition: threading.Condition):
-    pass
-
 
 def client_thread(
         server: socket.socket, addr, user: User, connections: dict[str, tuple[socket.socket, str]]
