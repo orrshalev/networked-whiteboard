@@ -9,7 +9,7 @@ from db.DB import DB
 
 DB_PATH = "./db/app.db"
 
-print_lock = threading.Lock()  # both main and threads need access to lock
+lock = threading.Lock()  # both main and threads need access to lock
 # for now getting rid of use of lock, might need later so keeping variable
 
 # may need to change this if need to be able to not user localhost
@@ -28,25 +28,34 @@ def thread_task(c: socket.socket, addr):
             break
 
         # TODO: Maybe do error handeling
-        data = data.decode("ascii").split("-")
+        data = data.split(b"-")
+        # data = data.decode("ascii", errors="ignore").split("-")
 
-        if data[0] == "LOGIN":
-            username = data[1]
-            password = data[2]
+        if data[0].decode('ascii') == "LOGIN":
+            username = data[1].decode("ascii")
+            password = data[2].decode("ascii")
             if db.check_user_credentials(username, password):
                 c.send(b"OK-")
-                break
             else:
                 c.send(b"ERROR")
-                break
 
-        elif data[0] == "SIGNUP":
-            username = data[1]
-            password = data[2]
+        elif data[0].decode("ascii") == "SIGNUP":
+            username = data[1].decode("ascii")
+            password = data[2].decode("ascii")
             db.create_user(username, password)
-            db.close_connection()
-            break
             # TODO: send confirmation
+            c.send(b"OK-")
+
+        elif data[0].decode('ascii') == "PAINT":
+            message = data[1]
+            roomname = data[2].decode("ascii")
+            ## Locks likely needed, can test without
+            #lock.acquire()
+            db.update_room_pixel(roomname, message)
+            #lock.release()
+            print(f"PAINT RECIEVED, message is: {message}, roomname is {roomname}")
+            TEST_PAINT_MESSAGE = b"PAINT-" + (100).to_bytes(2, "big") + (100).to_bytes(2, "big") + (1).to_bytes(1, "big")
+            c.send(TEST_PAINT_MESSAGE)
 
         # TODO: send confirmation
         # c.send()
@@ -54,12 +63,13 @@ def thread_task(c: socket.socket, addr):
 
 
 def main():
+    print(f"SERVER IP ADDRESS IS {SERVER_HOST}")
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # TLS protocol
-    server = ssl.wrap_socket(
-        server, server_side=True, keyfile="./tls/host.key", certfile="./tls/host.cert"
-    )
+    # server = ssl.wrap_socket(
+    #     server, server_side=True, keyfile="./tls/host.key", certfile="./tls/host.cert"
+    # )
 
     server.bind((SERVER_HOST, SERVER_PORT))
     print(f"socket binded to port {SERVER_PORT}")
