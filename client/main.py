@@ -69,8 +69,8 @@ class LoginWindow(QWidget):
 
         self.setGeometry(300, 300, 400, 200)
     def login(self):
-        self.wb_window = WhiteboardWindow(self.client)
-        self.wb_window.hide()
+        self.l_window = landingWindow(self.client)
+        self.l_window.hide()
         # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
 	
         # NOTE: Cannot include "-" in username or password
@@ -83,8 +83,8 @@ class LoginWindow(QWidget):
         # check if data is available to be received without blocking
         data = self.client.recv(1024)
         if data == b"OK-": 
-            self.wb_window.run_threads()
-            self.wb_window.show()
+            self.l_window.run_threads()
+            self.l_window.show()
             # self.wb_window = WhiteboardWindow(self.client)
             # self.wb_window.show()
             self.hide()
@@ -99,8 +99,8 @@ class LoginWindow(QWidget):
 	    
         username = self.username_input.text()
         password = self.password_input.text()
-        self.wb_window = WhiteboardWindow(self.client)
-        self.wb_window.hide()
+        self.l_window = landingWindow(self.client)
+        self.l_window.hide()
 	
         print("gets here in signup")
         self.client.send(
@@ -116,7 +116,7 @@ class LoginWindow(QWidget):
                 data = self.client.recv(1024)
                 print("after recv")
                 if data == b"OK-":
-                    self.wb_window.show()
+                    self.l_window.show()
                     # self.close()
                     self.hide()
                 elif data == b"ERROR":
@@ -143,6 +143,57 @@ class ErrorWindow(QWidget):
         #     self.login_window.pos().y() + (self.login_window.height() - self.height()) / 2
         # )
 
+
+class landingWindow(QWidget):
+	"""
+        Create a landing window that the clients go to after loggin in.
+		The window contains a list of active whiteboards.
+		The window also shows the user's name at the top.
+        The user can click on a whiteboard to join it.
+        Has a button at the bottom that allows the user to create a new whiteboard.
+	"""
+	def __init__(self, client):
+		super().__init__()
+		self.client = client
+		self.setWindowTitle("Whiteboard Demo")
+		self.setGeometry(100, 100, 800, 600)
+		self.layout = QVBoxLayout()
+		self.layout.setContentsMargins(0,0,0,0)
+		self.layout.setSpacing(0)
+		self.setLayout(self.layout)
+		self.layout.addWidget(QLabel("Welcome to the Whiteboard Demo!"))
+		self.layout.addWidget(QLabel("Please select a whiteboard to join:"))
+		self.whiteboard_list = QListWidget()
+		self.layout.addWidget(self.whiteboard_list)
+		self.whiteboard_list.itemDoubleClicked.connect(self.join_whiteboard)
+		self.create_whiteboard_button = QPushButton("Create New Whiteboard")
+		self.create_whiteboard_button.clicked.connect(self.create_whiteboard)
+		self.layout.addWidget(self.create_whiteboard_button)
+		self.worker = Worker(self.client)
+		self.worker.signals.whiteboard.connect(self.add_whiteboard)
+		self.threadpool = QThreadPool()
+		self.threadpool.start(self.worker)
+
+	def add_whiteboard(self, whiteboard_name):
+		self.whiteboard_list.addItem(whiteboard_name)
+
+	def join_whiteboard(self, whiteboard):
+		self.wb_window = WhiteboardWindow(self.client, whiteboard.text())
+		self.wb_window.hide()
+		self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
+		self.wb_window.show()
+		self.close()
+
+	def create_whiteboard(self):
+		self.wb_window = WhiteboardWindow(self.client)
+		self.wb_window.hide()
+		self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
+		self.wb_window.show()
+		self.close()
+
+	def on_sub_window_confirm(self):
+		self.show()
+	
 		
         
 # window class
