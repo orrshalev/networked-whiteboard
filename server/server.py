@@ -17,17 +17,21 @@ lock = threading.Lock()  # both main and threads need access to lock
 SERVER_HOST = socket.gethostbyname(socket.gethostname())
 SERVER_PORT = 1500
 
-
 class User:
     username: str = None
     roomname: str = "test"
 
 
-def paint_handler(server: socket.socket, condition: threading.Condition, user: User):
+def paint_handler(server: socket.socket, condition: threading.Condition):
     pass
 
 
-def client_thread(server: socket.socket,  addr, condition: threading.Condition, user: User):
+def client_thread(
+        server: socket.socket, addr, user: User, connections: dict[str, tuple[socket.socket, str]]
+):
+    """
+    :param connections: Username to connection and roomname
+    """
     db = DB(DB_PATH)
     while True:
         data = server.recv(1024)
@@ -46,7 +50,7 @@ def client_thread(server: socket.socket,  addr, condition: threading.Condition, 
             password = data[2].decode("ascii")
             if db.check_user_credentials(username, password):
                 server.send(b"OK-")
-                user.username = username
+                connections[username] = (server, "test")
             else:
                 server.send(b"ERROR")
 
@@ -69,6 +73,10 @@ def client_thread(server: socket.socket,  addr, condition: threading.Condition, 
             print(f"PAINT RECIEVED, message is: {message}, roomname is {roomname}")
             # This is a reminder why I needed to implement a condition:
             # server.send(b"PAINT-" + message)
+            for connection, paint_roomname in connections.values():
+                if paint_roomname == roomname:
+                    connection.send(b"PAINT-" + message)
+                
 
         # TODO: send confirmation
         # c.send()
@@ -93,15 +101,17 @@ def main():
     # may need to do more to ensure can't have more than 100 active users
     print("Listening...")
     # paint_handler goes outside while loop; should only have 1 exist
-    paint_condition = threading.Condition()
+    connections: dict[str, tuple[socket.socket, str]] = {}
     while True:
-        c, addr = server.accept()
+        connection, addr = server.accept()
+        user: User = User()
 
         # print_lock.acquire()
         print(f"Connected to : {addr[0]} : {addr[1]}")
 
-        user = User()
-        client_listener = threading.Thread(target=client_thread, args=(c, addr, paint_condition, user))
+        client_listener = threading.Thread(
+            target=client_thread, args=(connection, addr, user, connections)
+        )
         client_listener.start()
 
 
