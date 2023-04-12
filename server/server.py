@@ -17,8 +17,10 @@ lock = threading.Lock()  # both main and threads need access to lock
 SERVER_HOST = socket.gethostbyname(socket.gethostname())
 SERVER_PORT = 1500
 
+def paint_handler(server: socket.socket, addr, q: Queue):
+    pass
 
-def thread_task(server: socket.socket, addr):
+def client_thread(server: socket.socket, addr, q: Queue):
     db = DB(DB_PATH)
     while True:
         data = server.recv(1024)
@@ -60,7 +62,7 @@ def thread_task(server: socket.socket, addr):
             message = data[1]
             roomname = data[2]
             ## Locks likely needed, can test without
-            if (db.room_paintable()):
+            if db.room_paintable():
                 lock.acquire()
                 db.update_room_pixel(roomname, message)
                 lock.release()
@@ -88,7 +90,7 @@ def main():
     )  # will reject new connections when over 100 unaccepted connections active;
     # may need to do more to ensure can't have more than 100 active users
     print("Listening...")
-
+    # paint_handler goes outside while loop; should only have 1 exist
     while True:
         c, addr = server.accept()
 
@@ -96,7 +98,7 @@ def main():
         print(f"Connected to : {addr[0]} : {addr[1]}")
 
         start_new_thread(
-            thread_task,
+            client_thread,
             (
                 c,
                 addr,
