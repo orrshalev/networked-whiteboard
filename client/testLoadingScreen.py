@@ -74,24 +74,20 @@ class LoginWindow(QWidget):
             b"LOGIN-" + username.encode("ascii") + b"-" + password.encode("ascii")
         )
 
-         # wait for response from server
-        while True:
-            # check if data is available to be received without blocking
-            rlist, wlist, xlist = select.select([self.client], [], [], 0.1)
-            if rlist:
-                data = self.client.recv(1024)
-                if data == b"OK-": 
-                    self.wb_window.run_threads()
-                    self.wb_window.show()
-                    # self.wb_window = WhiteboardWindow(self.client)
-                    # self.wb_window.show()
-                    self.hide()
-		    
-                elif data == b"ERROR":
-                    # TODO: handle error case
-                    self.error_window = ErrorWindow("Incorrect username/password")
-                    self.error_window.show()
-                break
+        # check if data is available to be received without blocking
+        data = self.client.recv(1024)
+        if data == b"OK-": 
+            self.wb_window.run_threads()
+            self.wb_window.show()
+            # self.wb_window = WhiteboardWindow(self.client)
+            # self.wb_window.show()
+            self.hide()
+    
+        elif data == b"ERROR":
+            # TODO: handle error case
+            self.error_window = ErrorWindow("Incorrect username/password")
+            self.error_window.show()
+
 
     def signup(self):
 	    
