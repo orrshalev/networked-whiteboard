@@ -136,8 +136,6 @@ class ErrorWindow(QWidget):
         #     self.login_window.pos().x() + (self.login_window.width() - self.width()) / 2,
         #     self.login_window.pos().y() + (self.login_window.height() - self.height()) / 2
         # )
-
-		
         
 # window class
 class WhiteboardWindow(QMainWindow):
@@ -280,15 +278,22 @@ class WhiteboardWindow(QMainWindow):
 			message = xbytes + ybytes + T_bytes
 			roomname = "test"
             # # wait for response from server
-		
-			# self.client.send()
-			# if the selected action is textbox 
-			self.textbox = QLineEdit(self)
-			self.textbox.move(event.pos())
-			self.textbox.show()
-				# add self.textbox to a list
-			textboxList.append(self.textbox)
+
 			print(f"Mouse clicked at ({x}, {y})")
+
+			text, ok = QInputDialog.getText(self, "Text Input Dialog", "Enter your text:")
+			if ok:
+                # Create a painter to draw on the image
+				painter = QPainter(self.image)
+				painter.setPen(QPen(Qt.black, 4,
+								Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+				painter.setFont(QFont('Arial', 16))
+                # Draw the text at the mouse click position
+				painter.drawText(event.pos(), text)
+				painter.end()
+                # Update the widget to display the modified image
+				self.update()
+			self.last_point = event.pos()
 			
 			print("gets here for textbox")
 			self.client.send(
@@ -323,11 +328,6 @@ class WhiteboardWindow(QMainWindow):
 				b"PAINT-" + message + b"-" + roomname.encode("ascii")
 		    )
 			print("sent to server")
-			# self.worker = Worker(self.client)
-			# # self.worker.client = self.client
-			# self.worker.data_received.connect(self.handle_data_received)
-			# self.worker.start()
-            # wait for response from server
 
 	# method for tracking mouse activity
 	def mouseMoveEvent(self, event):
@@ -402,10 +402,6 @@ class WhiteboardWindow(QMainWindow):
 	def clear(self):
 		# make the whole canvas white
 		self.image.fill(Qt.white)
-		# for every textbox in the list
-		for self.textbox in textboxList:
-			# remove the textbox
-			self.textbox.setParent(None)
 		# update
 		self.update()
 
