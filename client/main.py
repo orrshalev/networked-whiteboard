@@ -243,8 +243,9 @@ class WhiteboardWindow(QMainWindow):
 		x = int.from_bytes(message[:2], byteorder="big") 
 		y = int.from_bytes(message[2:4], byteorder="big") 
 		T = message[4]
+		
 		painter = QPainter(self.image)
-		if T == 1:
+		if T == 1 or T == 5:
 			painter.setPen(QPen(Qt.black, 4,
 							Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
 		elif T == 2:
@@ -256,11 +257,14 @@ class WhiteboardWindow(QMainWindow):
 							Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
 		elif T == 4:
 			self.image.fill(Qt.white)
-			for self.textbox in textboxList:
-				self.textbox.setParent(None)
 			self.update()
 			return
-		painter.drawPoint(x, y)
+		
+		if T == 5:
+			print("Text value")
+			# painter.drawText(x, y, self.textbox.text())
+		else:
+			painter.drawPoint(x, y)
 		self.update()
 
 	def handle_data_received(self, data):
@@ -280,32 +284,33 @@ class WhiteboardWindow(QMainWindow):
 			# turns the x and y values into 2 bytes to send to server
 			xbytes = x.to_bytes(2, byteorder='big')
 			ybytes = y.to_bytes(2, byteorder='big')
-			if self.brushColor == Qt.black:
-				T = 1
-				T_bytes = T.to_bytes(1, byteorder='big')
-			elif self.brushColor == Qt.yellow:
-				T = 2
-				T_bytes = T.to_bytes(1, byteorder='big')
-			elif self.brushColor == Qt.white:
-				T = 3
-				T_bytes = T.to_bytes(1, byteorder='big')
+			T = 5
+			T_bytes = T.to_bytes(1, byteorder='big')
 	
 			message = xbytes + ybytes + T_bytes
 			roomname = "test"
+		
+			print(f"Mouse clicked at ({x}, {y})")
+
+			text, ok = QInputDialog.getText(self, "Text Input Dialog", "Enter your text:")
+			if ok:
+                # Create a painter to draw on the image
+				painter = QPainter(self.image)
+				painter.setPen(QPen(Qt.black, 4,
+								Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+				painter.setFont(QFont('Arial', 16))
+                # Draw the text at the mouse click position
+				painter.drawText(event.pos(), text)
+				painter.end()
+                # Update the widget to display the modified image
+				self.update()
+			self.last_point = event.pos()
+
 			self.client.send(
-				b"PAINT-" + message + b"-" + roomname.encode("ascii")
+				b"PAINT-" + message + b"-" + roomname.encode("ascii") + b"-" + text.encode("utf-8")
 		    )
 			print("sent to server")
             # # wait for response from server
-		
-			# self.client.send()
-			# if the selected action is textbox 
-			self.textbox = QLineEdit(self)
-			self.textbox.move(event.pos())
-			self.textbox.show()
-				# add self.textbox to a list
-			textboxList.append(self.textbox)
-			print(f"Mouse clicked at ({x}, {y})")
 
 		# if left mouse button is pressed
 		elif event.button() == Qt.LeftButton:
@@ -333,11 +338,6 @@ class WhiteboardWindow(QMainWindow):
 			self.client.send(
 				b"PAINT-" + message + b"-" + roomname.encode("ascii")
 		    )
-			# self.worker = Worker(self.client)
-			# # self.worker.client = self.client
-			# self.worker.data_received.connect(self.handle_data_received)
-			# self.worker.start()
-            # wait for response from server
 
 	# method for tracking mouse activity
 	def mouseMoveEvent(self, event):
