@@ -17,6 +17,7 @@ lock = threading.Lock()  # both main and threads need access to lock
 SERVER_HOST = socket.gethostbyname(socket.gethostname())
 SERVER_PORT = 1500
 
+# define a class to hold user data
 class User:
     username: str = None
     roomname: str = "test"
@@ -26,10 +27,12 @@ class User:
 def client_thread(
         server: socket.socket, addr, user: User, connections: dict[str, tuple[socket.socket, str]]
 ):
-    """
+    """ Handles a client thread
     :param connections: Username to connection and roomname
     """
     db = DB(DB_PATH)
+    
+    # run forever
     while True:
         data = server.recv(1024)
 
@@ -42,6 +45,7 @@ def client_thread(
         data = data.split(b"-")
         # data = data.decode("ascii", errors="ignore").split("-")
 
+        # if user is not logged in, only allow login/signup
         if data[0].decode("ascii") == "LOGIN":
             username = data[1].decode("ascii")
             password = data[2].decode("ascii")
@@ -81,6 +85,7 @@ def client_thread(
 
 
 def main():
+    """ Main function for server """
     print(f"SERVER IP ADDRESS IS {SERVER_HOST}")
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -89,9 +94,11 @@ def main():
     #     server, server_side=True, keyfile="./tls/host.key", certfile="./tls/host.cert"
     # )
 
+    # bind socket to port
     server.bind((SERVER_HOST, SERVER_PORT))
     print(f"socket binded to port {SERVER_PORT}")
 
+    # put the socket into listening mode
     server.listen(
         100
     )  # will reject new connections when over 100 unaccepted connections active;
@@ -99,6 +106,8 @@ def main():
     print("Listening...")
     # paint_handler goes outside while loop; should only have 1 exist
     connections: dict[str, tuple[socket.socket, str]] = {}
+    
+    # a forever loop until client wants to exit
     while True:
         connection, addr = server.accept()
         user: User = User()
