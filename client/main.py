@@ -69,8 +69,8 @@ class LoginWindow(QWidget):
 
         self.setGeometry(300, 300, 400, 200)
     def login(self):
-        self.wb_window = WhiteboardWindow(self.client)
-        self.wb_window.hide()
+        self.l_window = landingWindow(self.client)
+        self.l_window.hide()
         # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
 	
         # NOTE: Cannot include "-" in username or password
@@ -83,8 +83,8 @@ class LoginWindow(QWidget):
         # check if data is available to be received without blocking
         data = self.client.recv(1024)
         if data == b"OK-": 
-            self.wb_window.run_threads()
-            self.wb_window.show()
+            # self.l_window.run_threads()
+            self.l_window.show()
             # self.wb_window = WhiteboardWindow(self.client)
             # self.wb_window.show()
             self.hide()
@@ -99,8 +99,8 @@ class LoginWindow(QWidget):
 	    
         username = self.username_input.text()
         password = self.password_input.text()
-        self.wb_window = WhiteboardWindow(self.client)
-        self.wb_window.hide()
+        self.l_window = landingWindow(self.client)
+        self.l_window.hide()
 	
         print("gets here in signup")
         self.client.send(
@@ -116,7 +116,7 @@ class LoginWindow(QWidget):
                 data = self.client.recv(1024)
                 print("after recv")
                 if data == b"OK-":
-                    self.wb_window.show()
+                    self.l_window.show()
                     # self.close()
                     self.hide()
                 elif data == b"ERROR":
@@ -143,7 +143,88 @@ class ErrorWindow(QWidget):
         #     self.login_window.pos().y() + (self.login_window.height() - self.height()) / 2
         # )
 
-		
+
+class landingWindow(QWidget):
+
+	"""
+        Create a landing window that the clients go to after loggin in.
+		The window contains a list of active users.
+		The window contains a list of active whiteboards.
+		The window contains a refresh button.
+		The window contains a section for the user to recovery their whiteboard.
+		The window also shows the user's name at the top.
+        The user can click on a whiteboard to join it.
+        Has a button at the bottom that allows the user to create a new whiteboard if they do have a whiteboard saved.
+	"""	
+	def __init__(self, client):
+		super().__init__()
+		self.client = client
+		self.setWindowTitle("Whiteboard Demo")
+		self.setGeometry(100, 100, 800, 600)
+		self.layout = QVBoxLayout()
+		self.layout.setContentsMargins(0,0,0,0)
+		self.layout.setSpacing(0)
+		self.setLayout(self.layout)
+		self.layout.addWidget(QLabel("Welcome to the Whiteboard Demo!"))
+		self.layout.addWidget(QLabel("Please select a whiteboard to join:"))
+		self.whiteboard_list = QListWidget()
+		self.layout.addWidget(self.whiteboard_list)
+		self.whiteboard_list.itemDoubleClicked.connect(self.join_whiteboard)
+		self.create_whiteboard_button = QPushButton("Create New Whiteboard")
+		self.create_whiteboard_button.clicked.connect(self.create_whiteboard)
+		self.layout.addWidget(self.create_whiteboard_button)
+		self.layout.addWidget(QLabel("Please select a user to join their whiteboard:"))
+		self.user_list = QListWidget()
+		self.layout.addWidget(self.user_list)
+		self.user_list.itemDoubleClicked.connect(self.join_user)
+		self.layout.addWidget(QLabel("Please enter the name of a whiteboard to recover:"))
+		self.recovery_input = QLineEdit()
+		self.layout.addWidget(self.recovery_input)
+		self.recovery_button = QPushButton("Recover")
+		self.recovery_button.clicked.connect(self.recover)
+		self.layout.addWidget(self.recovery_button)
+		# self.worker = Worker(self.client)
+		# self.worker.signals.whiteboard.connect(self.add_whiteboard)
+		# self.worker.signals.user.connect(self.add_user)
+		# self.threadpool = QThreadPool()
+		# self.threadpool.start(self.worker)
+
+	def add_whiteboard(self, whiteboard_name):
+		self.whiteboard_list.addItem(whiteboard_name)
+
+	def add_user(self, user_name):
+		self.user_list.addItem(user_name)
+
+	def join_whiteboard(self, whiteboard):
+		self.wb_window = WhiteboardWindow(self.client, whiteboard.text())
+		self.wb_window.hide()
+		self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
+		self.wb_window.show()
+		self.hide()
+
+	def join_user(self, user):
+		self.wb_window = WhiteboardWindow(self.client, user.text())
+		self.wb_window.hide()
+		self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
+		self.wb_window.show()
+		self.hide()
+
+	def create_whiteboard(self):
+		self.wb_window = WhiteboardWindow(self.client)
+		self.wb_window.hide()
+		# self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
+		self.wb_window.show()
+		self.hide()
+
+	def on_sub_window_confirm(self):
+		self.show()
+
+	def recover(self):
+		self.wb_window = WhiteboardWindow(self.client, self.recovery_input.text())
+		self.wb_window.hide()
+		self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
+		self.wb_window.show()
+		self.hide()
         
 # window class
 class WhiteboardWindow(QMainWindow):
@@ -243,9 +324,8 @@ class WhiteboardWindow(QMainWindow):
 		x = int.from_bytes(message[:2], byteorder="big") 
 		y = int.from_bytes(message[2:4], byteorder="big") 
 		T = message[4]
-		
 		painter = QPainter(self.image)
-		if T == 1 or T == 5:
+		if T == 1:
 			painter.setPen(QPen(Qt.black, 4,
 							Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
 		elif T == 2:
@@ -257,14 +337,11 @@ class WhiteboardWindow(QMainWindow):
 							Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
 		elif T == 4:
 			self.image.fill(Qt.white)
+			for self.textbox in textboxList:
+				self.textbox.setParent(None)
 			self.update()
 			return
-		
-		if T == 5:
-			print("Text value")
-			# painter.drawText(x, y, self.textbox.text())
-		else:
-			painter.drawPoint(x, y)
+		painter.drawPoint(x, y)
 		self.update()
 
 	def handle_data_received(self, data):
@@ -284,33 +361,32 @@ class WhiteboardWindow(QMainWindow):
 			# turns the x and y values into 2 bytes to send to server
 			xbytes = x.to_bytes(2, byteorder='big')
 			ybytes = y.to_bytes(2, byteorder='big')
-			T = 5
-			T_bytes = T.to_bytes(1, byteorder='big')
+			if self.brushColor == Qt.black:
+				T = 1
+				T_bytes = T.to_bytes(1, byteorder='big')
+			elif self.brushColor == Qt.yellow:
+				T = 2
+				T_bytes = T.to_bytes(1, byteorder='big')
+			elif self.brushColor == Qt.white:
+				T = 3
+				T_bytes = T.to_bytes(1, byteorder='big')
 	
 			message = xbytes + ybytes + T_bytes
 			roomname = "test"
-		
-			print(f"Mouse clicked at ({x}, {y})")
-
-			text, ok = QInputDialog.getText(self, "Text Input Dialog", "Enter your text:")
-			if ok:
-                # Create a painter to draw on the image
-				painter = QPainter(self.image)
-				painter.setPen(QPen(Qt.black, 4,
-								Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-				painter.setFont(QFont('Arial', 16))
-                # Draw the text at the mouse click position
-				painter.drawText(event.pos(), text)
-				painter.end()
-                # Update the widget to display the modified image
-				self.update()
-			self.last_point = event.pos()
-
 			self.client.send(
-				b"PAINT-" + message + b"-" + roomname.encode("ascii") + b"-" + text.encode("utf-8")
+				b"PAINT-" + message + b"-" + roomname.encode("ascii")
 		    )
 			print("sent to server")
             # # wait for response from server
+		
+			# self.client.send()
+			# if the selected action is textbox 
+			self.textbox = QLineEdit(self)
+			self.textbox.move(event.pos())
+			self.textbox.show()
+				# add self.textbox to a list
+			textboxList.append(self.textbox)
+			print(f"Mouse clicked at ({x}, {y})")
 
 		# if left mouse button is pressed
 		elif event.button() == Qt.LeftButton:
@@ -338,6 +414,11 @@ class WhiteboardWindow(QMainWindow):
 			self.client.send(
 				b"PAINT-" + message + b"-" + roomname.encode("ascii")
 		    )
+			# self.worker = Worker(self.client)
+			# # self.worker.client = self.client
+			# self.worker.data_received.connect(self.handle_data_received)
+			# self.worker.start()
+            # wait for response from server
 
 	# method for tracking mouse activity
 	def mouseMoveEvent(self, event):
