@@ -6,6 +6,23 @@ import socket
 import time
 import traceback, sys
 
+def splitlines_clrf(data: bytes) -> list[bytes]:
+    """
+    More guranteed safety that lines will split based on \r\n ONLY than build in splitlines
+    """
+    lines = []
+    start = 0
+    while True:
+        end = data.find(b"\r\n", start)
+        if end == -1:
+            last_line = data[start:]
+            if last_line:
+                lines.append(last_line)
+            break
+        lines.append(data[start : end + 2])
+        start = end + 2
+    return lines
+
 
 class WorkerSignals(QObject):
     '''
@@ -28,18 +45,34 @@ class Worker(QRunnable):
     :param kwargs: Keywords to pass to the callback function
     '''
 
+    def _handle_pixel_message(self, line: bytes):
+        line = line.split(b'--')
+        # print(line)
+        if line[0].decode('ascii') == 'PAINT':
+            # print(line[1])
+            self.signals.pixel.emit(line[1])
+
     def _receive_pixel(self):
+        data = b""
         while True:
-            data = self.client.recv(1024)
-            if not data:
-                print(f"Dtaa not received correctly from server")
+            try:
+                data += self.client.recv(1024)
+            except TypeError:
+                print("Data not received correctly from server")
                 break
-            print(data)
-            data = data.split(b'-')
-            if data[0].decode('ascii') == 'PAINT':
-                print(data[1])
-                self.signals.pixel.emit(data[1])
-            
+            except Exception:
+                print("Error receiving data from server")
+                break
+            lines = splitlines_clrf(data)
+            full_lines, last_line = lines[:-1], lines[-1]
+            for line in full_lines:
+            # TODO: Maybe do error handeling
+                self._handle_pixel_message(line[:-2])
+            if last_line.endswith(b"\r\n"):
+                self._handle_pixel_message(last_line[:-2])
+                data = b""
+            else:
+                data = last_line
 
     def __init__(self, client: socket.socket):
         super(Worker, self).__init__()
