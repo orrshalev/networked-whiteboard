@@ -12,6 +12,8 @@ class WorkerSignals(QObject):
     Defines the signals available from a running worker thread.
     '''
     pixel = pyqtSignal(bytes)
+    whiteboard = pyqtSignal(bytes)
+    user = pyqtSignal(bytes)
     exit = pyqtSignal()
 
 

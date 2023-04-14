@@ -83,7 +83,7 @@ class LoginWindow(QWidget):
         # check if data is available to be received without blocking
         data = self.client.recv(1024)
         if data == b"OK-": 
-            # self.l_window.run_threads()
+            self.l_window.run_threads()
             self.l_window.show()
             # self.wb_window = WhiteboardWindow(self.client)
             # self.wb_window.show()
@@ -116,6 +116,7 @@ class LoginWindow(QWidget):
                 data = self.client.recv(1024)
                 print("after recv")
                 if data == b"OK-":
+                    self.l_window.run_threads()
                     self.l_window.show()
                     # self.close()
                     self.hide()
@@ -127,9 +128,6 @@ class ErrorWindow(QWidget):
     def __init__(self, message):
         super().__init__()
 
-        #self.main_window = LoginWindow()
-        # self.login_window = login_window
-
         self.setWindowTitle("Error")
         self.setGeometry(100,100,400,150)
         self.error_label = QLabel(message, self)
@@ -137,12 +135,6 @@ class ErrorWindow(QWidget):
         self.ok_button = QPushButton("OK", self)
         self.ok_button.move(150,100)
         self.ok_button.clicked.connect(self.close)
-
-        # self.move(
-        #     self.login_window.pos().x() + (self.login_window.width() - self.width()) / 2,
-        #     self.login_window.pos().y() + (self.login_window.height() - self.height()) / 2
-        # )
-
 
 class landingWindow(QWidget):
 
@@ -183,11 +175,14 @@ class landingWindow(QWidget):
 		self.recovery_button = QPushButton("Recover")
 		self.recovery_button.clicked.connect(self.recover)
 		self.layout.addWidget(self.recovery_button)
-		# self.worker = Worker(self.client)
-		# self.worker.signals.whiteboard.connect(self.add_whiteboard)
-		# self.worker.signals.user.connect(self.add_user)
-		# self.threadpool = QThreadPool()
+		self.worker = Worker(self.client)
+		self.worker.signals.whiteboard.connect(self.add_whiteboard)
+		self.worker.signals.user.connect(self.add_user)
+		self.threadpool = QThreadPool()
 		# self.threadpool.start(self.worker)
+
+	def run_threads(self):
+		self.threadpool.start(self.worker)
 
 	def add_whiteboard(self, whiteboard_name):
 		self.whiteboard_list.addItem(whiteboard_name)
@@ -228,8 +223,7 @@ class landingWindow(QWidget):
         
 # window class
 class WhiteboardWindow(QMainWindow):
-	global textboxList 
-	textboxList = []
+
 	# submitClicked = qtc.pyqtSignal()
 	def __init__(self, client):
 		super().__init__()
@@ -325,7 +319,7 @@ class WhiteboardWindow(QMainWindow):
 		y = int.from_bytes(message[2:4], byteorder="big") 
 		T = message[4]
 		painter = QPainter(self.image)
-		if T == 1:
+		if T == 1 or T == 5:
 			painter.setPen(QPen(Qt.black, 4,
 							Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
 		elif T == 2:
@@ -337,11 +331,15 @@ class WhiteboardWindow(QMainWindow):
 							Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
 		elif T == 4:
 			self.image.fill(Qt.white)
-			for self.textbox in textboxList:
-				self.textbox.setParent(None)
 			self.update()
 			return
-		painter.drawPoint(x, y)
+		
+		if T == 5:
+			#TODO: have a variable of text to send instead of self.textbox.text
+			# painter.drawText(x, y, self.textbox.text())
+			painter.drawText(x, y, "Hello")
+		else:
+			painter.drawPoint(x, y)
 		self.update()
 
 	def handle_data_received(self, data):
@@ -361,32 +359,34 @@ class WhiteboardWindow(QMainWindow):
 			# turns the x and y values into 2 bytes to send to server
 			xbytes = x.to_bytes(2, byteorder='big')
 			ybytes = y.to_bytes(2, byteorder='big')
-			if self.brushColor == Qt.black:
-				T = 1
-				T_bytes = T.to_bytes(1, byteorder='big')
-			elif self.brushColor == Qt.yellow:
-				T = 2
-				T_bytes = T.to_bytes(1, byteorder='big')
-			elif self.brushColor == Qt.white:
-				T = 3
-				T_bytes = T.to_bytes(1, byteorder='big')
+			T = 5
+			T_bytes = T.to_bytes(1, byteorder='big')
 	
 			message = xbytes + ybytes + T_bytes
 			roomname = "test"
+            # # wait for response from server
+
+			print(f"Mouse clicked at ({x}, {y})")
+
+			text, ok = QInputDialog.getText(self, "Text Input Dialog", "Enter your text:")
+			if ok:
+                # Create a painter to draw on the image
+				painter = QPainter(self.image)
+				painter.setPen(QPen(Qt.black, 4,
+								Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+				painter.setFont(QFont('Arial', 16))
+                # Draw the text at the mouse click position
+				painter.drawText(event.pos(), text)
+				painter.end()
+                # Update the widget to display the modified image
+				self.update()
+			self.last_point = event.pos()
+
 			self.client.send(
 				b"PAINT-" + message + b"-" + roomname.encode("ascii")
 		    )
 			print("sent to server")
             # # wait for response from server
-		
-			# self.client.send()
-			# if the selected action is textbox 
-			self.textbox = QLineEdit(self)
-			self.textbox.move(event.pos())
-			self.textbox.show()
-				# add self.textbox to a list
-			textboxList.append(self.textbox)
-			print(f"Mouse clicked at ({x}, {y})")
 
 		# if left mouse button is pressed
 		elif event.button() == Qt.LeftButton:
@@ -493,10 +493,6 @@ class WhiteboardWindow(QMainWindow):
 	def clear(self):
 		# make the whole canvas white
 		self.image.fill(Qt.white)
-		# for every textbox in the list
-		for self.textbox in textboxList:
-			# remove the textbox
-			self.textbox.setParent(None)
 		# update
 		self.update()
 

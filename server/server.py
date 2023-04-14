@@ -42,22 +42,67 @@ def client_thread(
         data = data.split(b"-")
         # data = data.decode("ascii", errors="ignore").split("-")
 
+        # Code for if user is trying to login
         if data[0].decode("ascii") == "LOGIN":
             username = data[1].decode("ascii")
             password = data[2].decode("ascii")
             if db.check_user_credentials(username, password):
+                db.add_active_user(username)
                 server.send(b"OK-")
                 connections[username] = (server, "test")
             else:
                 server.send(b"ERROR")
 
+        # code for if user is trying to sign up
         elif data[0].decode("ascii") == "SIGNUP":
             username = data[1].decode("ascii")
             password = data[2].decode("ascii")
             db.create_user(username, password)
+            db.add_active_user(username)
             # TODO: send confirmation
             server.send(b"OK-")
 
+        # code for if user is trying to get a list of rooms
+        elif data[0].decode("ascii") == "GETROOMS":
+            #TODO: create get_active_users function in db
+            roomlist = db.get_active_rooms()
+            server.send(roomlist)
+
+        # code for if user is trying to get a list of users
+        elif data[0].decode("ascii") == "GETUSERS":
+            #TODO: create get_user_list function in db
+            userlist = db.get_active_users()
+            server.send(userlist)
+
+        # code for if user is disconnecting from server
+        elif data[0].decode("ascii") == "DISCONNECT":
+            username = data[1].decode("ascii")
+            db.remove_active_user(username)
+            # add step to disconnect from server
+
+        # code for if user is trying to create a room
+        elif data[0].decode("ascii") == "CREATEROOM":
+            roomname = data[1].decode("ascii")
+            db.create_room(roomname)
+            # TODO: send confirmation
+
+        # code for if user is trying to join a room
+        elif data[0].decode("ascii") == "JOINROOM":
+            roomname = data[1].decode("ascii")
+            username = data[2].decode("ascii")
+            if db.room_joinable(roomname, username):
+                db.join_room(username, roomname)
+                connections[username] = (server, roomname)
+                server.send(b"OK-")
+
+        # code for if user is leaving a room they created
+        elif data[0].decode("ascii") == "LEAVEROOM":
+            roomname = data[1].decode("ascii")
+            username = data[2].decode("ascii")
+            db.close_room(username, roomname)
+            # connections[username] = (server, "test")
+
+        # code for if user is trying to paint
         elif data[0].decode("ascii") == "PAINT":
             message = data[1]
             roomname = data[2].decode(

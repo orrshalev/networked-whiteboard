@@ -235,7 +235,38 @@ class DB:
                                   WHERE roomname = ?"""
         c.execute(drop_from_room_table, (roomname,))
         self.conn.commit()
+    """
+    Create a list of active users based on the active_users table.
+    This list will be returned to the client from the server.
+    """
+    #EXPERIMENTAL
+    def get_active_users(self) -> list[str]:
+        select_statement = "SELECT * FROM active_users"
+        c = self.conn.cursor()
+        c.execute(select_statement)
 
+        rows = c.fetchall()
+        active_users = []
+        for row in rows:
+            active_users.append(row[0])
+        return active_users
+
+    """
+    Create a list of active rooms based on the rooms table.
+    This list will be returned to the client from the server.
+    """
+    #EXPERIMENTAL
+    def get_active_rooms(self) -> list[str]:
+        select_statement = "SELECT * FROM rooms"
+        c = self.conn.cursor()
+        c.execute(select_statement)
+
+        rows = c.fetchall()
+        active_rooms = []
+        for row in rows:
+            active_rooms.append(row[0])
+        return active_rooms
+    
     def _show_rooms_table(self):
         select_statement = "SELECT * FROM rooms"
         c = self.conn.cursor()
