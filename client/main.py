@@ -341,6 +341,9 @@ class WhiteboardWindow(QMainWindow):
                 self.textbox.setParent(None)
             self.update()
             return
+        # text
+        elif T ==5:
+            pass
         painter.drawPoint(x, y)
         self.update()
 
@@ -367,8 +370,6 @@ class WhiteboardWindow(QMainWindow):
             message = xbytes + ybytes + T_bytes
             roomname = "test"
             # # wait for response from server
-
-            print(f"Mouse clicked at ({x}, {y})")
 
             text, ok = QInputDialog.getText(
                 self, "Text Input Dialog", "Enter your text:"
@@ -475,7 +476,11 @@ class WhiteboardWindow(QMainWindow):
     # method for clearing every thing on canvas
     def clear(self):
         # make the whole canvas white
+        roomname = "test".encode('ascii')
+        T = 4
+        T_bytes = T.to_bytes(1, byteorder="big")
         self.image.fill(Qt.white)
+        self.client.send(b"PAINT--xxxx" + T_bytes + b"--" + roomname + b"\r\n")
         # update
         self.update()
 
