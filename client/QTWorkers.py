@@ -29,10 +29,10 @@ class Worker(QRunnable):
     '''
 
     def _handle_pixel_message(self, line: bytes):
-        line = line.split(b'-')
-        print(line)
+        line = line.split(b'--')
+        # print(line)
         if line[0].decode('ascii') == 'PAINT':
-            print(line[1])
+            # print(line[1])
             self.signals.pixel.emit(line[1])
 
     def _receive_pixel(self):

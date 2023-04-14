@@ -77,7 +77,7 @@ class LoginWindow(QWidget):
         username = self.username_input.text()
         password = self.password_input.text()
         self.client.send(
-            b"LOGIN-" + username.encode("ascii") + b"-" + password.encode("ascii") + b"\r\n"
+            b"LOGIN--" + username.encode("ascii") + b"--" + password.encode("ascii") + b"\r\n"
         )
 
         # check if data is available to be received without blocking
@@ -104,7 +104,7 @@ class LoginWindow(QWidget):
 	
         print("gets here in signup")
         self.client.send(
-            b"SIGNUP-" + username.encode("ascii") + b"-" + password.encode("ascii") + b"\r\n"
+            b"SIGNUP--" + username.encode("ascii") + b"--" + password.encode("ascii") + b"\r\n"
         )
 
         #wait for response from server
@@ -163,7 +163,6 @@ class WhiteboardWindow(QMainWindow):
 		self.brushColor = Qt.black
 
 		# QPoint object to tract the point
-		self.lastPoint = QPoint()
 
 		# creating menu bar
 		mainMenu = self.menuBar()
@@ -289,29 +288,9 @@ class WhiteboardWindow(QMainWindow):
 
 		# if left mouse button is pressed
 		elif event.button() == Qt.LeftButton:
-			x = event.x()
-			y = event.y()
 			# make drawing flag true
 			self.drawing = True
 			# make last point to the point of cursor
-			self.lastPoint = event.pos()
-			xbytes = x.to_bytes(2, byteorder='big')
-			ybytes = y.to_bytes(2, byteorder='big')
-			if self.brushColor == Qt.black:
-				T = 1
-				T_bytes = T.to_bytes(1, byteorder='big')
-			elif self.brushColor == Qt.yellow:
-				T = 2
-				T_bytes = T.to_bytes(1, byteorder='big')
-			elif self.brushColor == Qt.white:
-				T = 3
-				T_bytes = T.to_bytes(1, byteorder='big')
-	
-			message = xbytes + ybytes + T_bytes
-			roomname = "test"
-			self.client.send(
-				b"PAINT-" + message + b"-" + roomname.encode("ascii") + b"\r\n"
-		    )
 
 	# method for tracking mouse activity
 	def mouseMoveEvent(self, event):
@@ -344,17 +323,16 @@ class WhiteboardWindow(QMainWindow):
 				T_bytes = T.to_bytes(1, byteorder='big')
 	
 			message = xbytes + ybytes + T_bytes
-			roomname = "test"
+			roomname = "test".encode("ascii")
 			self.client.send(
-				b"PAINT-" + message + b"-" + roomname.encode("ascii") + b"\r\n"
+				b"PAINT--" + message + b"--" + roomname + b"\r\n"
 		    )
 	
 			# draw line from the last point of cursor to the current point
 			# this will draw only one step
-			painter.drawLine(self.lastPoint, event.pos())
+			painter.drawPoint(x, y)
 
 			# change the last point
-			self.lastPoint = event.pos()
 			# update
 			self.update()
 

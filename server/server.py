@@ -17,12 +17,37 @@ lock = threading.Lock()  # both main and threads need access to lock
 SERVER_HOST = socket.gethostbyname(socket.gethostname())
 SERVER_PORT = 1500
 
+
+def splitlines_clrf(data: bytes) -> list[bytes]:
+    """
+    More guranteed safety that lines will split based on \r\n ONLY than build in splitlines
+    """
+    lines = []
+    start = 0
+    while True:
+        end = data.find(b"\r\n", start)
+        if end == -1:
+            last_line = data[start:]
+            if last_line:
+                lines.append(last_line)
+            break
+        lines.append(data[start : end + 2])
+        start = end + 2
+    return lines
+
+
 class User:
     username: str = None
     roomname: str = "test"
 
-def handle_message(line: bytes, server: socket.socket, connections: dict[str, tuple[socket.socket, str]], db: DB):
-    line = line.split(b"-")
+
+def handle_message(
+    line: bytes,
+    server: socket.socket,
+    connections: dict[str, tuple[socket.socket, str]],
+    db: DB,
+):
+    line = line.split(b"--")
     # data = data.decode("ascii", errors="ignore").split("-")
 
     if line[0].decode("ascii") == "LOGIN":
@@ -43,23 +68,26 @@ def handle_message(line: bytes, server: socket.socket, connections: dict[str, tu
 
     elif line[0].decode("ascii") == "PAINT":
         message = line[1]
-        print(line[2])
         roomname = line[2].decode(
             "ascii"
         )  # NOTE: sometimes this is wrong, prints testPAINT
         ## Locks likely needed, can test without
         # lock.acquire()
-        db.update_room_pixel(roomname, message)
+        # db.update_room_pixel(roomname, message)
         # lock.release()
         # print(f"PAINT RECIEVED, message is: {message}, roomname is {roomname}")
         # This is a reminder why I needed to implement a condition:
         # server.send(b"PAINT-" + message)
         for connection, paint_roomname in connections.values():
             if paint_roomname == roomname:
-                connection.send(b"PAINT-" + message + b"\r\n")
+                connection.send(b"PAINT--" + message + b"\r\n")
+
 
 def client_thread(
-        server: socket.socket, addr, user: User, connections: dict[str, tuple[socket.socket, str]]
+    server: socket.socket,
+    addr,
+    user: User,
+    connections: dict[str, tuple[socket.socket, str]],
 ):
     """
     :param connections: Username to connection and roomname
@@ -74,7 +102,7 @@ def client_thread(
             # print_lock.release()
             break
         # lines = data.split(keepends=True)
-        lines = [line + b"\r\n" for line in data.split(b"\r\n") if line]
+        lines = splitlines_clrf(data)
         full_lines, last_line = lines[:-1], lines[-1]
         # print(f"full_lines: {full_lines}, last_line: {last_line}")
         for line in full_lines:
@@ -84,7 +112,6 @@ def client_thread(
             data = b""
         else:
             data = last_line
-        
 
     # TODO: send confirmation
     server.close()

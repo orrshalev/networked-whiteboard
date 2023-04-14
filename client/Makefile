@@ -8,4 +8,4 @@ docker_run:
     -u qtuser \
     --network whiteboard-network \
 		--publish 1100:1100 \
-    whiteboard-client python3 ./main.py $(SERVER_HOST)
+    whiteboard-client python3 ./main.py 172.18.0.2
