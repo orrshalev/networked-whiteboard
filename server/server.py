@@ -47,7 +47,7 @@ def handle_message(
     connections: dict[str, tuple[socket.socket, str]],
     db: DB,
 ):
-    line = line.split(b"--")
+    line: list[bytes] = line.split(b"--")
     # data = data.decode("ascii", errors="ignore").split("-")
 
     if line[0].decode("ascii") == "LOGIN":
@@ -74,6 +74,15 @@ def handle_message(
         for connection, paint_roomname in connections.values():
             if paint_roomname == roomname:
                 connection.send(b"PAINT--" + message + b"\r\n")
+    elif line[0].decode("ascii") == "TEXT":
+        message = line[1]
+        roomname = line[2].decode(
+            "ascii"
+        )  # NOTE: sometimes this is wrong, prints testPAINT
+        text = line[3]
+        for connection, paint_roomname in connections.values():
+            if paint_roomname == roomname:
+                connection.send(b"TEXT--" + message + b"--" + text + b"\r\n")
 
 
 def client_thread(

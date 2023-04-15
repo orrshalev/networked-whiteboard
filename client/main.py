@@ -249,6 +249,7 @@ class WhiteboardWindow(QMainWindow):
 
         self.worker = Worker(self.client)
         self.worker.signals.pixel.connect(self.server_paint)
+        self.worker.signals.text.connect(self.server_text)
         self.threadpool = QThreadPool()
         self.threadpool.start(self.worker)
 
@@ -342,9 +343,20 @@ class WhiteboardWindow(QMainWindow):
             self.update()
             return
         # text
-        elif T ==5:
-            pass
         painter.drawPoint(x, y)
+        self.update()
+
+    def server_text(self, message: bytes):
+        x = int.from_bytes(message[:2], byteorder="big")
+        y = int.from_bytes(message[2:4], byteorder="big")
+        text = message[4:].decode("utf-8")
+        painter = QPainter(self.image)
+        painter.setPen(QPen(Qt.black, 4, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        painter.setFont(QFont("Arial", 16))
+        # Draw the text at the mouse click position
+        painter.drawText(x, y, text)
+        painter.end()
+        # Update the widget to display the modified image
         self.update()
 
     def handle_data_received(self, data):
@@ -364,10 +376,8 @@ class WhiteboardWindow(QMainWindow):
             # turns the x and y values into 2 bytes to send to server
             xbytes = x.to_bytes(2, byteorder="big")
             ybytes = y.to_bytes(2, byteorder="big")
-            T = 5
-            T_bytes = T.to_bytes(1, byteorder="big")
 
-            message = xbytes + ybytes + T_bytes
+            message = xbytes + ybytes
             roomname = "test"
             # # wait for response from server
 
@@ -386,13 +396,16 @@ class WhiteboardWindow(QMainWindow):
                 painter.end()
                 # Update the widget to display the modified image
                 self.update()
-            self.last_point = event.pos()
 
-            print("gets here for textbox")
             self.client.send(
-                b"PAINT--" + message + b"--" + roomname.encode("ascii") + b"\r\n"
+                b"TEXT--"
+                + message
+                + b"--"
+                + roomname.encode("ascii")
+                + b"--"
+                + text.encode("utf-8")
+                + b"\r\n"
             )
-            print("sent to server")
 
         # if left mouse button is pressed
         elif event.button() == Qt.LeftButton:
@@ -476,7 +489,7 @@ class WhiteboardWindow(QMainWindow):
     # method for clearing every thing on canvas
     def clear(self):
         # make the whole canvas white
-        roomname = "test".encode('ascii')
+        roomname = "test".encode("ascii")
         T = 4
         T_bytes = T.to_bytes(1, byteorder="big")
         self.image.fill(Qt.white)

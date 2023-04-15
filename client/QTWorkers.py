@@ -6,6 +6,7 @@ import socket
 import time
 import traceback, sys
 
+
 def splitlines_clrf(data: bytes) -> list[bytes]:
     """
     More guranteed safety that lines will split based on \r\n ONLY than build in splitlines
@@ -25,15 +26,17 @@ def splitlines_clrf(data: bytes) -> list[bytes]:
 
 
 class WorkerSignals(QObject):
-    '''
+    """
     Defines the signals available from a running worker thread.
-    '''
+    """
+
     pixel = pyqtSignal(bytes)
+    text = pyqtSignal(bytes)
     exit = pyqtSignal()
 
 
 class Worker(QRunnable):
-    '''
+    """
     Worker thread
 
     Inherits from QRunnable to handler worker thread setup, signals and wrap-up.
@@ -43,14 +46,16 @@ class Worker(QRunnable):
     :type callback: function
     :param args: Arguments to pass to the callback function
     :param kwargs: Keywords to pass to the callback function
-    '''
+    """
 
     def _handle_pixel_message(self, line: bytes):
-        line = line.split(b'--')
+        line = line.split(b"--")
         # print(line)
-        if line[0].decode('ascii') == 'PAINT':
+        if line[0].decode("ascii") == "PAINT":
             # print(line[1])
             self.signals.pixel.emit(line[1])
+        elif line[0].decode("ascii") == "TEXT":
+            self.signals.text.emit(line[1] + line[2])
 
     def _receive_pixel(self):
         data = b""
@@ -66,7 +71,7 @@ class Worker(QRunnable):
             lines = splitlines_clrf(data)
             full_lines, last_line = lines[:-1], lines[-1]
             for line in full_lines:
-            # TODO: Maybe do error handeling
+                # TODO: Maybe do error handeling
                 self._handle_pixel_message(line[:-2])
             if last_line.endswith(b"\r\n"):
                 self._handle_pixel_message(last_line[:-2])
@@ -83,9 +88,9 @@ class Worker(QRunnable):
 
     @pyqtSlot()
     def run(self):
-        '''
+        """
         Initialise the runner function with passed args, kwargs.
-        '''
+        """
         # Retrieve args/kwargs here; and fire processing using them
         try:
             result = self._receive_pixel()
