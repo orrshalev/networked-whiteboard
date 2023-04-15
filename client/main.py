@@ -482,12 +482,30 @@ class WhiteboardWindow(QMainWindow):
 
 	# method for saving canvas
 	def save(self):
-		filePath, _ = QFileDialog.getSaveFileName(self, "Save Image", "",
-						"PNG(*.png);;JPEG(*.jpg *.jpeg);;All Files(*.*) ")
+		# filePath, _ = QFileDialog.getSaveFileName(self, "Save Image", "",
+		# 				"PNG(*.png);;JPEG(*.jpg *.jpeg);;All Files(*.*) ")
 
-		if filePath == "":
-			return
-		self.image.save(filePath)
+		# if filePath == "":
+		# 	return
+		# self.image.save(filePath)
+
+		"""
+		The client will send every pixel of the whiteboard to the server based on the rgb values of each x and y position.
+		"""
+		
+		# get the image
+		image = self.image
+		# get the width and height of the image
+		width = image.width()
+		height = image.height()
+		# loop through the width and height of the image
+		for x in range(width):
+			for y in range(height):
+				# get the rgb value of the pixel
+				rgb = image.pixel(x, y)
+				message = rgb + b"-" + x + y.to_bytes(2, byteorder='big')
+				self.client.send(b"SAVE-" + rgb)
+		# encode the string
 
 	# method for clearing every thing on canvas
 	def clear(self):

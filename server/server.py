@@ -62,6 +62,12 @@ def client_thread(
             # TODO: send confirmation
             server.send(b"OK-")
 
+        # code for if user is trying to save a whiteboard
+        elif data[0].decode("ascii") == "SAVE":
+            """ 
+            The user will send a message that will have the following format:
+            SAVE-<pixel message(x,y,rbg)>-<roomname>-<username>-<wbpassword>
+            """
         # code for if user is trying to get a list of rooms
         elif data[0].decode("ascii") == "GETROOMS":
             #TODO: create get_active_users function in db
