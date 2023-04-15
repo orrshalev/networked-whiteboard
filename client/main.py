@@ -250,6 +250,14 @@ class landingWindow(QWidget):
         self.hide()
         self.ok_button.clicked.connect(self.close)
 
+    def refreshButton(self):
+        # add a refresh button that refreshes the list of users and whiteboards when clicked
+        self.refresh_button = QPushButton("Refresh")
+        self.layout.addWidget(self.refresh_button)
+        # when clicked, the button will send a request to the server to get the list of users and whiteboards
+        self.refresh_button.clicked.connect(self.refresh) # use the refresh method already defined
+        
+
 
 # window class
 class WhiteboardWindow(QMainWindow):
