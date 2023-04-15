@@ -388,7 +388,8 @@ def main():
         db.update_room_pixel(sys.argv[2], message)
     elif check_arg(5, "GET_PIXEL"):
         db._get_room_pixel(sys.argv[2], sys.argv[3], sys.argv[4])
-
+    elif check_arg(2, "CREATE_ACTIVE_USERS_TABLE"):
+        db._create_active_user_table()
     else:
         explainer = """
             RUN FROM db DIRECTORY
