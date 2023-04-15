@@ -10,23 +10,27 @@ WINDOW_HEIGHT = 600
 
 # TODO: limit # of users that can be created
 class DB:
-    def __init__(self, db_file: str):
+    def __init__(self, db_file: str, debug=False):
         """
         establish persistent connection
         """
         self.conn = sqlite3.connect(db_file)
+        self.DEBUG = debug
+        self._debug_print()
 
-    def _conversions():
-        """
-        Useless function; delete later
-        """
-        num = 5
-        two_bytes = num.to_bytes(2, byteorder="big")
-        back_to_num = int.from_bytes(two_bytes, byteorder="big")
+    def _debug_print(self):
+        if self.DEBUG:
+            print("Here are the open rooms:\n")
+            self._show_rooms_table()
+            print()
+            print("Here are the registered users:\n")
+            self._select_all_users()
+            print()
+            print("Here are the active users:\n")
+            self._select_all_active_users()
 
     def _raw_command(self, sql: str) -> None:
-        """Will execute any command given; do not use outside of file
-        sql: SQLite query
+        """Will execute any command given; do not use outside of file sql: SQLite query
         :return:
         """
         c = self.conn.cursor()
@@ -38,6 +42,8 @@ class DB:
                     id INTEGER PRIMARY KEY,
                     roomname text NOT NULL,
                     host text NOT NULL,
+                    password text,
+                    salt text,
                     closed_at timestamp,
                     FOREIGN KEY(host) REFERENCES users(username)
                 )"""
@@ -63,12 +69,37 @@ class DB:
                               VALUES (?)"""
         c.execute(insert_statement, (username,))
         self.conn.commit()
+        self._debug_print()
+
+    def _select_all_active_users(self):
+        c = self.conn.cursor()
+        c.execute("SELECT * FROM active_users")
+
+        rows = c.fetchall()
+
+        for row in rows:
+            print(row)
 
     def remove_active_user(self, username: str):
         c = self.conn.cursor()
         delete_statement = """DELETE FROM active_users
                               WHERE username = ? ;"""
         c.execute(delete_statement, (username,))
+        self.conn.commit()
+
+        select_statement = """SELECT * FROM rooms
+                              WHERE host = ?"""
+        rows = c.fetchall()
+        if len(rows) == 0:
+            return
+        
+        insert_statement = """INSERT INTO rooms(closed_at)
+                              VALUES (?)
+                              WHERE host = ? ;"""
+        c.execute(insert_statement, (datetime.datetime.now(), username))
+        self.conn.commit()
+        self._debug_print()
+
 
     def join_room(self, username: str, roomname: str) -> bool:
         c = self.conn.cursor()
@@ -78,6 +109,24 @@ class DB:
         c.execute(update_statement, (roomname, username))
         self.conn.commit()
         return True
+    
+    def get_active_users(self) -> list[str]:
+        c = self.conn.cursor()
+        select_statement = """SELECT username 
+                               FROM active_users
+                               """
+        c.execute(select_statement)
+        rows = c.fetchall()
+        return [row[0] for row in rows]
+
+    def get_active_rooms(self):
+        c = self.conn.cursor()
+        select_statement = """SELECT roomname 
+                               FROM rooms
+                               """
+        c.execute(select_statement)
+        rows = c.fetchall()
+        return [row[0] for row in rows]
 
     # TODO add user verification
     def create_room(self, username: str, roomname: str):
@@ -89,22 +138,24 @@ class DB:
         room_schema = f"""CREATE TABLE IF NOT EXISTS {roomname} (
                     x INTEGER NOT NULL,
                     y INTEGER NOT NULL,
-                    T INTEGER NOT NULL,
-                    text_box text,
+                    R INTEGER NOT NULL,
+                    B INTEGER NOT NULL,
+                    G INTEGER NOT NULL,
                     PRIMARY KEY (x, y)
                 );
         """
         c = self.conn.cursor()
         c.execute(room_schema)
-        table_values = f"""INSERT INTO {roomname} VALUES (?, ?, 3, NULL)"""
+        table_values = f"""INSERT INTO {roomname} VALUES (?, ?, ?, ?, ?)"""
         for x in range(WINDOW_WIDTH):
             for y in range(WINDOW_HEIGHT):
-                c.execute(table_values, (x, y))
+                c.execute(table_values, (x, y, 255, 255, 255)) # Insert white to all
         self.conn.commit()
 
         add_to_rooms_table = "INSERT INTO rooms(roomname, host) VALUES (?, ?)"
         c.execute(add_to_rooms_table, (roomname, username))
         self.conn.commit()
+        self._debug_print()
 
     def update_room_pixel(self, roomname: str, paint_message: bytes) -> None:
         c = self.conn.cursor()
@@ -161,7 +212,7 @@ class DB:
         c.execute(update_statement, (datetime.datetime.now(), roomname))
         self.conn.commit()
 
-    def room_paintable(self, roomname:str) -> bool: 
+    def room_paintable(self, roomname: str) -> bool:
         c = self.conn.cursor()
         select_statement = """SELECT closed_at
                               FROM rooms
@@ -177,7 +228,7 @@ class DB:
         if vals[0] is None:
             return True
 
-        return False # room is in recovery mode
+        return False  # room is in recovery mode
 
     def room_joinable(self, roomname: str, username: str) -> bool:
         c = self.conn.cursor()
@@ -266,7 +317,7 @@ class DB:
     def _select_all_users(self) -> None:
         """
         Query all rows in the users table
-        :return:
+        :return: 
         """
         c = self.conn.cursor()
         c.execute("SELECT * FROM users")
@@ -357,6 +408,8 @@ def main():
         db.update_room_pixel(sys.argv[2], message)
     elif check_arg(5, "GET_PIXEL"):
         db._get_room_pixel(sys.argv[2], sys.argv[3], sys.argv[4])
+    elif check_arg(2, "CREATE_ACTIVE_USER_TABLE"):
+        db._create_active_user_table()
 
     else:
         explainer = """

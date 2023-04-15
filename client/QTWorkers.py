@@ -56,19 +56,21 @@ class Worker(QRunnable):
             self.signals.pixel.emit(line[1])
         elif line[0].decode("ascii") == "TEXT":
             self.signals.text.emit(line[1] + line[2])
+        elif line[0].decode("ascii") == "EXIT":
+            self.signals.exit.emit()
 
     def _receive_pixel(self):
         data = b""
         while True:
             try:
                 data += self.client.recv(1024)
-            except TypeError:
-                print("Data not received correctly from server")
-                break
             except Exception:
                 print("Error receiving data from server")
                 break
             lines = splitlines_clrf(data)
+            if len(lines) == 0:
+                print("Error receiving data from server")
+                break
             full_lines, last_line = lines[:-1], lines[-1]
             for line in full_lines:
                 # TODO: Maybe do error handeling

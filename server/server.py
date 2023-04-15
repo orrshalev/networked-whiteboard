@@ -1,8 +1,7 @@
 import socket
-import ssl
 from _thread import *
 import threading
-import ssl
+import sys
 from queue import Queue
 
 # all above from from stdlib
@@ -16,6 +15,7 @@ lock = threading.Lock()  # both main and threads need access to lock
 # may need to change this if need to be able to not user localhost
 SERVER_HOST = socket.gethostbyname(socket.gethostname())
 SERVER_PORT = 1500
+DEBUG = len(sys.argv) > 1 and sys.argv[1] == "DEBUG"
 
 
 def splitlines_clrf(data: bytes) -> list[bytes]:
@@ -46,6 +46,7 @@ def handle_message(
     server: socket.socket,
     connections: dict[str, tuple[socket.socket, str]],
     db: DB,
+    user: User,
 ):
     line: list[bytes] = line.split(b"--")
     # data = data.decode("ascii", errors="ignore").split("-")
@@ -56,6 +57,8 @@ def handle_message(
         if db.check_user_credentials(username, password):
             server.send(b"OK\r\n")
             connections[username] = (server, "test")
+            db.add_active_user(username)
+            user.username = username
         else:
             server.send(b"ERROR\r\n")
 
@@ -63,6 +66,7 @@ def handle_message(
         username = line[1].decode("ascii")
         password = line[2].decode("ascii")
         db.create_user(username, password)
+        db.add_active_user(username)
         # TODO: send confirmation
         server.send(b"OK\r\n")
 
@@ -83,6 +87,34 @@ def handle_message(
         for connection, paint_roomname in connections.values():
             if paint_roomname == roomname:
                 connection.send(b"TEXT--" + message + b"--" + text + b"\r\n")
+    elif line[0].decode("ascii") == "CREATEROOM":
+        roomname = line[1].decode("ascii")
+        db.create_room(user.username, roomname)
+    elif line[0].decode("ascii") == "JOINROOM":
+            roomname = line[1].decode("ascii")
+            username = user.username
+            if db.room_joinable(roomname, username):
+                db.join_room(username, roomname)
+                connections[username] = (server, roomname)
+                server.send(b"OK-")
+    elif line[0].decode("ascii") == "GETROOMS":
+            #TODO: create get_active_users function in db
+            roomlist = db.get_active_rooms()
+            message = b""
+            for room in roomlist:
+                message += room.encode('ascii') + b"--"
+            message = message[:-2]
+            message += b"\r\n"
+            server.send(message)
+    elif line[0].decode("ascii") == "GETUSERS":
+            #TODO: create get_user_list function in db
+            userlist = db.get_active_users()
+            message = b""
+            for user in userlist:
+                message += user.encode('ascii') + b"--"
+            message = message[:-2]
+            message += b"\r\n"
+            server.send(message)
 
 
 def client_thread(
@@ -94,23 +126,31 @@ def client_thread(
     """
     :param connections: Username to connection and roomname
     """
-    db = DB(DB_PATH)
+    db = DB(DB_PATH, debug=DEBUG)
     data = b""
     while True:
         try:
             data += server.recv(1024)
-        except TypeError:
-            print(f"Data not recieved correctly from : {addr[0]} : {addr[1]}")
+        except Exception:
+            print(f"Disconnecting user : {addr[0]} : {addr[1]}")
+            db.remove_active_user(user.username)
+            connections.pop(user.username, "NO USER FOUND")
             # print_lock.release()
             break
         # lines = data.split(keepends=True)
         lines = splitlines_clrf(data)
+        if len(lines) == 0:
+            print(f"Disconnecting user : {addr[0]} : {addr[1]}")
+            db.remove_active_user(user.username)
+            connections.pop(user.username, "NO USER FOUND")
+            # print_lock.release()
+            break
         full_lines, last_line = lines[:-1], lines[-1]
         # print(f"full_lines: {full_lines}, last_line: {last_line}")
         for line in full_lines:
-            handle_message(line[:-2], server, connections, db)
+            handle_message(line[:-2], server, connections, db, user)
         if last_line.endswith(b"\r\n"):
-            handle_message(last_line[:-2], server, connections, db)
+            handle_message(last_line[:-2], server, connections, db, user)
             data = b""
         else:
             data = last_line

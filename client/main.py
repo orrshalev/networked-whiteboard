@@ -183,14 +183,36 @@ class landingWindow(QWidget):
         self.recovery_button = QPushButton("Recover")
         self.recovery_button.clicked.connect(self.recover)
         self.layout.addWidget(self.recovery_button)
+        self.refresh_button = QPushButton("Refresh")
+        self.refresh_button.clicked.connect(self.refresh)
+        self.layout.addWidget(self.refresh_button)
+        self.refresh()
         # self.worker = Worker(self.client)
         # self.worker.signals.whiteboard.connect(self.add_whiteboard)
         # self.worker.signals.user.connect(self.add_user)
         # self.threadpool = QThreadPool()
         # self.threadpool.start(self.worker)
+    
+    def refresh(self):
+        self.user_list.clear()
+        self.whiteboard_list.clear()
+
+        self.client.send(b"GETUSERS\r\n")
+        users = self.client.recv(1024)
+        users = users.split(b"--")
+        for user in users:
+            self.user_list.addItem(user.decode('ascii'))
+
+        self.client.send(b"GETROOMS\r\n")
+        rooms = self.client.recv(1024)
+        rooms = rooms.split(b"--")
+        for room in rooms:
+            self.whiteboard_list.addItem(room.decode('ascii'))
+
 
     def add_whiteboard(self, whiteboard_name):
         self.whiteboard_list.addItem(whiteboard_name)
+    
 
     def add_user(self, user_name):
         self.user_list.addItem(user_name)
@@ -215,6 +237,7 @@ class landingWindow(QWidget):
         # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
         self.wb_window.show()
         self.hide()
+        self.client.send(b"CREATEROOM--test\r\n")
 
     def on_sub_window_confirm(self):
         self.show()
@@ -250,6 +273,7 @@ class WhiteboardWindow(QMainWindow):
         self.worker = Worker(self.client)
         self.worker.signals.pixel.connect(self.server_paint)
         self.worker.signals.text.connect(self.server_text)
+        self.worker.signals.exit.connect(self.exit)
         self.threadpool = QThreadPool()
         self.threadpool.start(self.worker)
 
@@ -323,6 +347,10 @@ class WhiteboardWindow(QMainWindow):
 
     def run_threads(self):
         self.threadpool.start(self.worker)
+    
+    def exit(self):
+        self.threadpool.cancel(self.worker)
+        # TODO : Add going back to main menu
 
     def server_paint(self, message: bytes):
         x = int.from_bytes(message[:2], byteorder="big")
