@@ -39,7 +39,7 @@ To run:
 -e DISPLAY=$DISPLAY
 -u qtuser
 --network whiteboard-network
---publish PORT:1100
+--publish PORT:1000
 whiteboard-client python3 ./main.py 172.18.0.2`
 
 Where PORT is the port number you would like your local system to use. Keep in mind that you should not be using overlapping PORTs for the client
