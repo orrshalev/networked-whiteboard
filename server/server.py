@@ -149,8 +149,13 @@ def handle_message(
                     connection.send(b"EXIT\r\n")
         user.roomname = None
         user.is_host = False
-    elif line[0].decode("ascii") == "SAVE_AND_EXIT":
+    elif line[0].decode("ascii") == "SAVE":
         pass
+    elif line[0].decode('ascii') == "RECOVER":
+        roomname = line[1].decode("ascii")
+        username = user.username
+        if db.room_joinable(roomname, username):
+            db.join_room(username, roomname)
 
 
 def client_thread(

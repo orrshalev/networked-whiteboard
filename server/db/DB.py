@@ -1,4 +1,5 @@
 import sqlite3
+import socket
 import os
 import hashlib
 import sys
@@ -136,22 +137,26 @@ class DB:
         :param username: username of host
         :param roomname: room name (visible to others)
         """
-        room_schema = f"""CREATE TABLE IF NOT EXISTS {roomname} (
-                    x INTEGER NOT NULL,
-                    y INTEGER NOT NULL,
-                    R INTEGER NOT NULL,
-                    B INTEGER NOT NULL,
-                    G INTEGER NOT NULL,
-                    PRIMARY KEY (x, y)
-                );
-        """
-        c = self.conn.cursor()
-        c.execute(room_schema)
-        table_values = f"""INSERT INTO {roomname} VALUES (?, ?, ?, ?, ?)"""
-        for x in range(WINDOW_WIDTH):
-            for y in range(WINDOW_HEIGHT):
-                c.execute(table_values, (x, y, 255, 255, 255)) # Insert white to all
-        self.conn.commit()
+        try: 
+            room_schema = f"""CREATE TABLE {roomname} (
+                        x INTEGER NOT NULL,
+                        y INTEGER NOT NULL,
+                        R INTEGER NOT NULL,
+                        B INTEGER NOT NULL,
+                        G INTEGER NOT NULL,
+                        PRIMARY KEY (x, y)
+                    );
+            """
+            c = self.conn.cursor()
+            c.execute(room_schema)
+            table_values = f"""INSERT INTO {roomname} VALUES (?, ?, ?, ?, ?)"""
+            for x in range(WINDOW_WIDTH):
+                for y in range(WINDOW_HEIGHT):
+                    c.execute(table_values, (x, y, 255, 255, 255)) # Insert white to all
+            self.conn.commit()
+        except Exception:
+            print(f"WARNING: ROOM WITH NAME {roomname} ALREADY EXISTS")
+
 
         add_to_rooms_table = "INSERT INTO rooms(roomname, host) VALUES (?, ?)"
         c.execute(add_to_rooms_table, (roomname, username))
@@ -230,11 +235,14 @@ class DB:
             return True
 
         return False  # room is in recovery mode
+    
+    def recover_room(self, roomname: str, username: str, connection: socket.socket):
+        self.join_room(username, roomname)
 
     def room_joinable(self, roomname: str, username: str) -> bool:
         c = self.conn.cursor()
         # check if room exists
-        select_statement = """SELECT closed_at
+        select_statement = """SELECT (closed_at, host)
                               FROM rooms
                               WHERE roomname = ? ;"""
         c.execute(select_statement, (roomname,))
@@ -257,7 +265,7 @@ class DB:
         time_passed: datetime.timedelta = datetime.datetime.now() - time
         SECONDS_IN_HOUR = 3600
         # not timed out
-        if time_passed.total_seconds() < SECONDS_IN_HOUR:
+        if time_passed.total_seconds() < SECONDS_IN_HOUR and username == vals[0][1]:
             return True
 
         drop_statement = f"""DROP TABLE IF EXISTS {roomname} ;"""

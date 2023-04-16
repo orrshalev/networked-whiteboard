@@ -17,7 +17,7 @@ if len(sys.argv) != 2:
 
 
 CLIENT_HOST = socket.gethostbyname(socket.gethostname())
-CLIENT_PORT = 1000  # see: https://stackoverflow.com/questions/20396820/socket-programing-permission-denied
+CLIENT_PORT = 1000
 SERVER_HOST = sys.argv[1]
 SERVER_PORT = 1500
 
@@ -112,7 +112,6 @@ class LoginWindow(QWidget):
         data = self.client.recv(1024)
         if data[:-2] == b"OK":
             self.wb_window.show()
-            # self.close()
             self.hide()
         elif data[:-2] == b"ERROR":
             print("Maximum number of Users Reached, cannot log in")
