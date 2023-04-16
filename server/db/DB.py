@@ -26,7 +26,7 @@ class DB:
             self._show_rooms_table()
             print()
             print("Here are the registered users:\n")
-            self._select_all_users()
+            self.select_all_users()
             print()
             print("Here are the active users:\n")
             self._select_all_active_users()
@@ -94,14 +94,13 @@ class DB:
         rows = c.fetchall()
         if len(rows) == 0:
             return
-        
+
         insert_statement = """INSERT INTO rooms(closed_at)
                               VALUES (?)
                               WHERE host = ? ;"""
         c.execute(insert_statement, (datetime.datetime.now(), username))
         self.conn.commit()
         self._debug_print()
-
 
     def join_room(self, username: str, roomname: str) -> bool:
         c = self.conn.cursor()
@@ -111,7 +110,7 @@ class DB:
         c.execute(update_statement, (roomname, username))
         self.conn.commit()
         return True
-    
+
     def get_active_users(self) -> list[str]:
         c = self.conn.cursor()
         select_statement = """SELECT username 
@@ -131,13 +130,13 @@ class DB:
         return [row[0] for row in rows]
 
     # TODO add user verification
-    def create_room(self, username: str, roomname: str):
+    def create_room(self, username: str, roomname: str, password: str = None):
         """
         Create a new room assigned to a host (user that created room)
         :param username: username of host
         :param roomname: room name (visible to others)
         """
-        try: 
+        try:
             room_schema = f"""CREATE TABLE {roomname} (
                         x INTEGER NOT NULL,
                         y INTEGER NOT NULL,
@@ -152,14 +151,25 @@ class DB:
             table_values = f"""INSERT INTO {roomname} VALUES (?, ?, ?, ?, ?)"""
             for x in range(WINDOW_WIDTH):
                 for y in range(WINDOW_HEIGHT):
-                    c.execute(table_values, (x, y, 255, 255, 255)) # Insert white to all
+                    c.execute(
+                        table_values, (x, y, 255, 255, 255)
+                    )  # Insert white to all
             self.conn.commit()
         except Exception:
             print(f"WARNING: ROOM WITH NAME {roomname} ALREADY EXISTS")
 
-
-        add_to_rooms_table = "INSERT INTO rooms(roomname, host) VALUES (?, ?)"
-        c.execute(add_to_rooms_table, (roomname, username))
+        if password:
+            salt = os.urandom(32)
+            key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100000)
+            add_to_rooms_table = (
+                "INSERT INTO rooms(roomname, host, password, salt) VALUES (?, ?, ?, ?)"
+                if password
+                else "INSERT INTO rooms(roomname, host) VALUES (?, ?)"
+            )
+            c.execute(add_to_rooms_table, (roomname, username, key, salt))
+        else:
+            add_to_rooms_table = "INSERT INTO rooms(roomname, host) VALUES (?, ?)"
+            c.execute(add_to_rooms_table, (roomname, username))
         self.conn.commit()
         self._debug_print()
 
@@ -235,30 +245,36 @@ class DB:
             return True
 
         return False  # room is in recovery mode
-    
+
     def recover_room(self, roomname: str, username: str, connection: socket.socket):
         self.join_room(username, roomname)
 
-    def room_joinable(self, roomname: str, username: str) -> bool:
+    def room_joinable(self, roomname: str, username: str, password: str = None) -> bool:
         c = self.conn.cursor()
         # check if room exists
-        select_statement = """SELECT (closed_at, host)
+        select_statement = """SELECT closed_at, host, password, salt
                               FROM rooms
                               WHERE roomname = ? ;"""
         c.execute(select_statement, (roomname,))
         vals = c.fetchall()
-        for val in vals:
-            print(f"DEBUG STATEMENT: {val}")
 
         if len(vals) == 0:
             print("WARNING: ROOM NOT FOUND")
             return False
 
-        # check timeout
+        # check timeout and password
         # check if this works
-        time: datetime.datetime = vals[0][0]
 
         # host did not leave; can join room
+        key: str = vals[0][2]
+        salt: str = vals[0][3]
+        time: datetime.datetime = vals[0][0]
+        if password and not key:
+            return False
+        if password:
+            new_key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100000)
+            return key == new_key and time is None
+        
         if time is None:
             return True
 
@@ -313,10 +329,11 @@ class DB:
         :param user[1]: non-hashed password
         :return: user id
         """
+        c = self.conn.cursor()
         select_statement = """SELECT * FROM users"""
         c.execute(select_statement)
         rows = c.fetchall()
-        if rows > MAX_REGISTERED_USERS:
+        if len(rows) > MAX_REGISTERED_USERS:
             print("WARNING: MAXIMUM USERS ALLOWED TO REGISTER REACHED")
             return
         salt = os.urandom(32)
@@ -329,18 +346,20 @@ class DB:
         print(f"User {username} created")
         return c.lastrowid
 
-    def _select_all_users(self) -> None:
+    def select_all_users(self) -> list[str]:
         """
         Query all rows in the users table
-        :return: 
+        :return:
         """
         c = self.conn.cursor()
-        c.execute("SELECT * FROM users")
+        c.execute("SELECT username FROM users")
 
         rows = c.fetchall()
 
-        for row in rows:
-            print(row)
+        return [row[0] for row in rows]
+
+
+        
 
     def check_user_credentials(self, username: str, password: str) -> bool:
         """
@@ -394,7 +413,7 @@ def main():
     elif check_arg(4, "ADD_USER"):
         user_id = db.create_user(sys.argv[2], sys.argv[3])
     elif check_arg(2, "SELECT_ALL_USERS"):
-        db._select_all_users()
+        db.select_all_users()
     elif check_arg(4, "CHECK_USER"):
         user_exists = db.check_user_credentials(sys.argv[2], sys.argv[3])
         if user_exists:

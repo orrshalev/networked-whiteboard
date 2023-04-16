@@ -195,6 +195,7 @@ class landingWindow(QWidget):
     def refresh(self):
         self.user_list.clear()
         self.whiteboard_list.clear()
+        self.inactive_list.clear()
 
         self.client.send(b"GETUSERS\r\n")
         users = self.client.recv(1024)
@@ -223,7 +224,8 @@ class landingWindow(QWidget):
     def join_whiteboard(self, whiteboard: QListWidgetItem):
         password, ok = QInputDialog.getText(self, "Whiteboard Password", "Enter Password:", QLineEdit.Password)
         if ok:
-            self.client.send(b"JOINROOM--" + whiteboard.text().encode('ascii') + b"--" + password.encode('ascii') + b"\r\n")
+            message = b"JOINROOM--" + whiteboard.text().encode('ascii')[:-2] + b"--" + password.encode('ascii') + b"\r\n"
+            self.client.send(message)
             data = self.client.recv(1024)
             if data[:-2] == b"OK":
                 self.wb_window = WhiteboardWindow(self.client, self)
