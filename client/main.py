@@ -17,12 +17,7 @@ if len(sys.argv) != 2:
 
 
 CLIENT_HOST = socket.gethostbyname(socket.gethostname())
-CLIENT_PORT = 1100  # see: https://stackoverflow.com/questions/20396820/socket-programing-permission-denied
-SERVER_HOST = sys.argv[1]
-SERVER_PORT = 1500
-
-CLIENT_HOST = socket.gethostbyname(socket.gethostname())
-CLIENT_PORT = 1100  # see: https://stackoverflow.com/questions/20396820/socket-programing-permission-denied
+CLIENT_PORT = 1000  # see: https://stackoverflow.com/questions/20396820/socket-programing-permission-denied
 SERVER_HOST = sys.argv[1]
 SERVER_PORT = 1500
 
