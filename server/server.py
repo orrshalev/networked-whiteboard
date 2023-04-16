@@ -91,30 +91,32 @@ def handle_message(
         roomname = line[1].decode("ascii")
         db.create_room(user.username, roomname)
     elif line[0].decode("ascii") == "JOINROOM":
-            roomname = line[1].decode("ascii")
-            username = user.username
-            if db.room_joinable(roomname, username):
-                db.join_room(username, roomname)
-                connections[username] = (server, roomname)
-                server.send(b"OK-")
+        roomname = line[1].decode("ascii")
+        username = user.username
+        if db.room_joinable(roomname, username):
+            db.join_room(username, roomname)
+            connections[username] = (server, roomname)
+            server.send(b"OK\r\n")
     elif line[0].decode("ascii") == "GETROOMS":
-            #TODO: create get_active_users function in db
-            roomlist = db.get_active_rooms()
-            message = b""
-            for room in roomlist:
-                message += room.encode('ascii') + b"--"
-            message = message[:-2]
-            message += b"\r\n"
-            server.send(message)
+        # TODO: create get_active_users function in db
+        roomlist = db.get_active_rooms()
+        message = b""
+        for room in roomlist:
+            message += room.encode("ascii") + b"--"
+        message = message[:-2]
+        message += b"\r\n"
+        server.send(message)
     elif line[0].decode("ascii") == "GETUSERS":
-            #TODO: create get_user_list function in db
-            userlist = db.get_active_users()
-            message = b""
-            for user in userlist:
-                message += user.encode('ascii') + b"--"
-            message = message[:-2]
-            message += b"\r\n"
-            server.send(message)
+        # TODO: create get_user_list function in db
+        userlist = db.get_active_users()
+        message = b""
+        for user in userlist:
+            message += user.encode("ascii") + b"--"
+        message = message[:-2]
+        message += b"\r\n"
+        server.send(message)
+    elif line[0].decode("ascii") == "EXIT":
+        server.send(b"EXIT\r\n")
 
 
 def client_thread(

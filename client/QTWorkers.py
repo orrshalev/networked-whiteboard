@@ -58,6 +58,7 @@ class Worker(QRunnable):
             self.signals.text.emit(line[1] + line[2])
         elif line[0].decode("ascii") == "EXIT":
             self.signals.exit.emit()
+            exit()
 
     def _receive_pixel(self):
         data = b""
@@ -94,11 +95,4 @@ class Worker(QRunnable):
         Initialise the runner function with passed args, kwargs.
         """
         # Retrieve args/kwargs here; and fire processing using them
-        try:
-            result = self._receive_pixel()
-        except:
-            traceback.print_exc()
-            exctype, value = sys.exc_info()[:2]
-            self.signals.error.emit((exctype, value, traceback.format_exc()))
-        else:
-            pass
+        result = self._receive_pixel()

@@ -187,12 +187,7 @@ class landingWindow(QWidget):
         self.refresh_button.clicked.connect(self.refresh)
         self.layout.addWidget(self.refresh_button)
         self.refresh()
-        # self.worker = Worker(self.client)
-        # self.worker.signals.whiteboard.connect(self.add_whiteboard)
-        # self.worker.signals.user.connect(self.add_user)
-        # self.threadpool = QThreadPool()
-        # self.threadpool.start(self.worker)
-    
+
     def refresh(self):
         self.user_list.clear()
         self.whiteboard_list.clear()
@@ -201,24 +196,24 @@ class landingWindow(QWidget):
         users = self.client.recv(1024)
         users = users.split(b"--")
         for user in users:
-            self.user_list.addItem(user.decode('ascii'))
+            self.user_list.addItem(user.decode("ascii"))
 
         self.client.send(b"GETROOMS\r\n")
         rooms = self.client.recv(1024)
         rooms = rooms.split(b"--")
         for room in rooms:
-            self.whiteboard_list.addItem(room.decode('ascii'))
-
+            self.whiteboard_list.addItem(room.decode("ascii"))
 
     def add_whiteboard(self, whiteboard_name):
         self.whiteboard_list.addItem(whiteboard_name)
-    
 
     def add_user(self, user_name):
         self.user_list.addItem(user_name)
 
     def join_whiteboard(self, whiteboard):
-        self.wb_window = WhiteboardWindow(self.client, whiteboard.text())
+        # self.wb_window = WhiteboardWindow(self.client, whiteboard.text(), self)
+        # above does not properly use constructor; please fix
+        self.wb_window = WhiteboardWindow(self.client, self)
         self.wb_window.hide()
         self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
         self.wb_window.show()
@@ -232,7 +227,7 @@ class landingWindow(QWidget):
         self.hide()
 
     def create_whiteboard(self):
-        self.wb_window = WhiteboardWindow(self.client)
+        self.wb_window = WhiteboardWindow(self.client, self)
         self.wb_window.hide()
         # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
         self.wb_window.show()
@@ -257,9 +252,10 @@ class WhiteboardWindow(QMainWindow):
     textboxList = []
 
     # submitClicked = qtc.pyqtSignal()
-    def __init__(self, client):
+    def __init__(self, client, landing_window):
         super().__init__()
         self.client = client
+        self.l_window = landing_window
 
         # setting title
         self.setWindowTitle("Whiteboard Demo")
@@ -307,11 +303,17 @@ class WhiteboardWindow(QMainWindow):
         textbox = mainMenu.addMenu("Textbox")
 
         # creating save action
-        saveAction = QAction("Save", self)
+        saveAction = QAction("Save and Exit", self)
         # adding save to the file menu
         fileMenu.addAction(saveAction)
         # adding action to the save
         saveAction.triggered.connect(self.save)
+
+        exitAction = QAction("Exit", self)
+
+        fileMenu.addAction(exitAction)
+
+        exitAction.triggered.connect(self.exit)
 
         # creating clear action
         clearAction = QAction("Clear", self)
@@ -347,10 +349,17 @@ class WhiteboardWindow(QMainWindow):
 
     def run_threads(self):
         self.threadpool.start(self.worker)
-    
+
     def exit(self):
-        self.threadpool.cancel(self.worker)
+        self.hide()
+        self.l_window.show()
+        self.client.send(b"EXIT\r\n")
         # TODO : Add going back to main menu
+
+    def save_and_exit(self):
+        self.hide()
+        self.l_window.show()
+        self.client.send(b"EXIT\r\n")
 
     def server_paint(self, message: bytes):
         x = int.from_bytes(message[:2], byteorder="big")
