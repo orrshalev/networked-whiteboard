@@ -17,6 +17,8 @@ SERVER_HOST = socket.gethostbyname(socket.gethostname())
 SERVER_PORT = 1500
 DEBUG = len(sys.argv) > 1 and sys.argv[1] == "DEBUG"
 MAX_CONNECTIONS = 100
+MAX_ROOMS_OPEN = 10
+MAX_WHITEBOARD_JOINEES = 10
 
 
 def splitlines_clrf(data: bytes) -> list[bytes]:
@@ -84,24 +86,44 @@ def handle_message(
             if paint_roomname == user.roomname:
                 connection.send(b"TEXT--" + message + b"--" + text + b"\r\n")
     elif line[0].decode("ascii") == "CREATEROOM":
-        roomname = line[1].decode("ascii")
-        username = user.username
-        db.create_room(user.username, roomname)
-        connections[username] = (server, roomname)
-        user.roomname = roomname
-        user.is_host = True
+        unique_rooms_count = len(
+            set(
+                [
+                    connections[username][1]
+                    for username in connections
+                    if connections[username][1] and connections[username][1] == roomname
+                ]
+            )
+        )
+        if unique_rooms_count < MAX_ROOMS_OPEN:
+            roomname = line[1].decode("ascii")
+            username = user.username
+            db.create_room(user.username, roomname)
+            connections[username] = (server, roomname)
+            user.roomname = roomname
+            user.is_host = True
     elif line[0].decode("ascii") == "JOINROOM":
         roomname = line[1].decode("ascii")
         username = user.username
-        print(f"ROOM JOINABLE {db.room_joinable(roomname, username)}")
-        if db.room_joinable(roomname, username):
+        users_in_room = len(
+            [
+                connections[username][1]
+                for username in connections
+                if connections[username][1] and connections[username][1] == roomname
+            ]
+        )
+        if users_in_room < MAX_ROOMS_OPEN and db.room_joinable(roomname, username):
             db.join_room(username, roomname)
             connections[username] = (server, roomname)
             user.roomname = roomname
             server.send(b"OK\r\n")
     elif line[0].decode("ascii") == "GETROOMS":
         # TODO: create get_active_users function in db
-        roomlist = [connections[username][1] for username in connections if connections[username][1]]
+        roomlist = [
+            connections[username][1]
+            for username in connections
+            if connections[username][1]
+        ]
         message = b""
         for room in roomlist:
             message += room.encode("ascii") + b"--"
@@ -136,7 +158,7 @@ def client_thread(
     addr,
     user: User,
     connections: dict[str, tuple[socket.socket, str]],
-    connection_count: int
+    connection_count: int,
 ):
     """
     :param connections: Username to connection and roomname
@@ -203,7 +225,8 @@ def main():
             print(f"Connected to : {addr[0]} : {addr[1]}")
 
             client_listener = threading.Thread(
-                target=client_thread, args=(connection, addr, user, connections, connection_count)
+                target=client_thread,
+                args=(connection, addr, user, connections, connection_count),
             )
             client_listener.start()
             connection_count += 1
