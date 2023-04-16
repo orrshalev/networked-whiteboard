@@ -102,6 +102,9 @@ def handle_message(
             connections[username] = (server, roomname)
             user.roomname = roomname
             user.is_host = True
+            server.send(b"OK\r\n")
+        else:
+            server.send(b"ERROR\r\n")
     elif line[0].decode("ascii") == "JOINROOM":
         roomname = line[1].decode("ascii")
         username = user.username
@@ -139,6 +142,15 @@ def handle_message(
         message = message[:-2]
         message += b"\r\n"
         server.send(message)
+    elif line[0].decode("ascii") == "GETINACTIVEUSERS":
+        #NOTE: This is copied straight from GETUSERS, need to touch up
+        userlist = [username for username in connections]
+        message = b""
+        for user in userlist:
+            message += user.encode("ascii") + b"--"
+        message = message[:-2]
+        message += b"\r\n"
+        server.send(message)
     elif line[0].decode("ascii") == "EXIT":
         username = user.username
         connections[username] = (server, None)
@@ -150,6 +162,8 @@ def handle_message(
         user.roomname = None
         user.is_host = False
     elif line[0].decode("ascii") == "SAVE_AND_EXIT":
+        pass
+    elif line[0].decode("ascii") == "RECOVER":
         pass
 
 
