@@ -297,12 +297,12 @@ class landingWindow(QWidget):
         # self.ok_button.clicked.connect(self.close)
         roomname = self.recovery_input.text()
         password = self.password_input.text()
+        self.client.send(b"RECOVER" + b"--" + roomname.encode('ascii') + b"--" + password.encode('ascii') + b"\r\n")
         self.wb_window = WhiteboardWindow(self.client, roomname, password)
         self.wb_window.hide()
         self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
         self.wb_window.show()
         self.hide()
-        self.client.send(b"RECOVER" + b"--" + roomname.encode('ascii') + b"--" + password.encode('ascii') + b"\r\n")
 
 
 # window class
@@ -329,6 +329,7 @@ class WhiteboardWindow(QMainWindow):
         self.worker.signals.pixel.connect(self.server_paint)
         self.worker.signals.text.connect(self.server_text)
         self.worker.signals.exit.connect(self.exit)
+        self.worker.signals.pixel_rgb.connect(self.server_paint_rgb)
         self.threadpool = QThreadPool()
         self.threadpool.start(self.worker)
 
@@ -423,8 +424,8 @@ class WhiteboardWindow(QMainWindow):
                 red = (rgb >> 16) & 0xff
                 green = (rgb >> 8) & 0xff
                 blue = rgb & 0xff                
-                message = x + y + red + green + blue
-                self.client.send(b"RECOVER" + b"--" + message + "\r\n")
+                message = x.to_bytes(2, byteorder='big') + y + red.to_bytes(1, byteorder='big') + green + blue
+                self.client.send(b"SAVE" + b"--" + message + "\r\n")
                 
 
     def save_and_exit(self):
@@ -445,7 +446,7 @@ class WhiteboardWindow(QMainWindow):
                 blue = rgb & 0xff
                 print(red + "-" + green + "-" + blue)
                 message = x + y + red + green + blue
-                self.client.send(b"SAVE_AND_EXIT" + b"--" + message + "\r\n")
+                self.client.send(b"SAVE" + b"--" + message + "\r\n")
 
     def server_paint(self, message: bytes):
         x = int.from_bytes(message[:2], byteorder="big")
@@ -468,6 +469,9 @@ class WhiteboardWindow(QMainWindow):
         # text
         painter.drawPoint(x, y)
         self.update()
+
+    def server_paint_rgb(self, message: bytes):
+        pass
 
     def server_text(self, message: bytes):
         x = int.from_bytes(message[:2], byteorder="big")

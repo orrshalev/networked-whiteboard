@@ -31,6 +31,7 @@ class WorkerSignals(QObject):
     """
 
     pixel = pyqtSignal(bytes)
+    pixel_rgb = pyqtSignal(bytes)
     text = pyqtSignal(bytes)
     exit = pyqtSignal()
 
@@ -59,6 +60,8 @@ class Worker(QRunnable):
         elif line[0].decode("ascii") == "EXIT":
             self.signals.exit.emit()
             exit()
+        elif line[0].decode('ascii') == "PIXEL_RGB":
+            self.signals.pixel_rgb.emit(line[1])
 
     def _receive_pixel(self):
         data = b""
