@@ -4,6 +4,7 @@
 
 - Docker must be installed and the docker daemon must be running
 - You may need to pull the ubuntu and python images (`docker pull python` and `docker pull ubuntu`)
+- This app is intended to run on a Linux environment with DISPLAY environment variable set; you may need to set a DISPLAY environment and enable X11 forwarding if you are not on Linux
 
 ## Server
 
