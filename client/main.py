@@ -111,7 +111,7 @@ class LoginWindow(QWidget):
         # wait for response from server
         data = self.client.recv(1024)
         if data[:-2] == b"OK":
-            self.wb_window.show()
+            self.l_window.show()
             self.hide()
         elif data[:-2] == b"ERROR":
             self.error_window = ErrorWindow("Maximum number of Users Reached, cannot log in")
@@ -262,7 +262,6 @@ class landingWindow(QWidget):
                 if password:
                     command += b"--" + password.encode('ascii')
                 command += b"\r\n"
-                print(command)
                 self.client.send(command)
 
                 data = self.client.recv(1024)

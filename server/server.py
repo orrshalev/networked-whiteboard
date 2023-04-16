@@ -73,6 +73,9 @@ def handle_message(
         db.add_active_user(username)
         # TODO: send confirmation
         server.send(b"OK\r\n")
+        connections[username] = (server, None)
+        db.add_active_user(username)
+        user.username = username
 
     elif line[0].decode("ascii") == "PAINT":
         message = line[1]
