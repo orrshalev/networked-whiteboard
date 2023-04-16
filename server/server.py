@@ -38,7 +38,8 @@ def splitlines_clrf(data: bytes) -> list[bytes]:
 
 class User:
     username: str = None
-    roomname: str = "test"
+    roomname: str = None
+    is_host: bool = False
 
 
 def handle_message(
@@ -56,7 +57,7 @@ def handle_message(
         password = line[2].decode("ascii")
         if db.check_user_credentials(username, password):
             server.send(b"OK\r\n")
-            connections[username] = (server, "test")
+            connections[username] = (server, None)
             db.add_active_user(username)
             user.username = username
         else:
@@ -72,34 +73,34 @@ def handle_message(
 
     elif line[0].decode("ascii") == "PAINT":
         message = line[1]
-        roomname = line[2].decode(
-            "ascii"
-        )  # NOTE: sometimes this is wrong, prints testPAINT
         for connection, paint_roomname in connections.values():
-            if paint_roomname == roomname:
+            if paint_roomname == user.roomname:
                 connection.send(b"PAINT--" + message + b"\r\n")
     elif line[0].decode("ascii") == "TEXT":
         message = line[1]
-        roomname = line[2].decode(
-            "ascii"
-        )  # NOTE: sometimes this is wrong, prints testPAINT
-        text = line[3]
+        text = line[2]
         for connection, paint_roomname in connections.values():
-            if paint_roomname == roomname:
+            if paint_roomname == user.roomname:
                 connection.send(b"TEXT--" + message + b"--" + text + b"\r\n")
     elif line[0].decode("ascii") == "CREATEROOM":
         roomname = line[1].decode("ascii")
+        username = user.username
         db.create_room(user.username, roomname)
+        connections[username] = (server, roomname)
+        user.roomname = roomname
+        user.is_host = True
     elif line[0].decode("ascii") == "JOINROOM":
         roomname = line[1].decode("ascii")
         username = user.username
+        print(f"ROOM JOINABLE {db.room_joinable(roomname, username)}")
         if db.room_joinable(roomname, username):
             db.join_room(username, roomname)
             connections[username] = (server, roomname)
+            user.roomname = roomname
             server.send(b"OK\r\n")
     elif line[0].decode("ascii") == "GETROOMS":
         # TODO: create get_active_users function in db
-        roomlist = db.get_active_rooms()
+        roomlist = [connections[username][1] for username in connections if connections[username][1]]
         message = b""
         for room in roomlist:
             message += room.encode("ascii") + b"--"
@@ -108,7 +109,7 @@ def handle_message(
         server.send(message)
     elif line[0].decode("ascii") == "GETUSERS":
         # TODO: create get_user_list function in db
-        userlist = db.get_active_users()
+        userlist = [username for username in connections]
         message = b""
         for user in userlist:
             message += user.encode("ascii") + b"--"
@@ -116,7 +117,17 @@ def handle_message(
         message += b"\r\n"
         server.send(message)
     elif line[0].decode("ascii") == "EXIT":
+        username = user.username
+        connections[username] = (server, None)
         server.send(b"EXIT\r\n")
+        if user.is_host:
+            for connection, roomname in connections.values():
+                if roomname == user.roomname:
+                    connection.send(b"EXIT\r\n")
+        user.roomname = None
+        user.is_host = False
+    elif line[0].decode("ascii") == "SAVE_AND_EXIT":
+        pass
 
 
 def client_thread(

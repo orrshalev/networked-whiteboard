@@ -250,7 +250,7 @@ class DB:
         time: datetime.datetime = vals[0][0]
 
         # host did not leave; can join room
-        if vals[0] is None:
+        if time is None:
             return True
 
         time_passed: datetime.timedelta = datetime.datetime.now() - time

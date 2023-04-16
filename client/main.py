@@ -210,14 +210,15 @@ class landingWindow(QWidget):
     def add_user(self, user_name):
         self.user_list.addItem(user_name)
 
-    def join_whiteboard(self, whiteboard):
+    def join_whiteboard(self, whiteboard: QListWidgetItem):
         # self.wb_window = WhiteboardWindow(self.client, whiteboard.text(), self)
         # above does not properly use constructor; please fix
         self.wb_window = WhiteboardWindow(self.client, self)
         self.wb_window.hide()
-        self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
+        # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
         self.wb_window.show()
         self.hide()
+        self.client.send(b"JOINROOM--" + whiteboard.text().encode('ascii') + b"\r\n")
 
     def join_user(self, user):
         self.wb_window = WhiteboardWindow(self.client, user.text())
@@ -226,6 +227,7 @@ class landingWindow(QWidget):
         self.wb_window.show()
         self.hide()
 
+    # TODO : get user input for name
     def create_whiteboard(self):
         self.wb_window = WhiteboardWindow(self.client, self)
         self.wb_window.hide()
@@ -415,7 +417,6 @@ class WhiteboardWindow(QMainWindow):
             ybytes = y.to_bytes(2, byteorder="big")
 
             message = xbytes + ybytes
-            roomname = "test"
             # # wait for response from server
 
             text, ok = QInputDialog.getText(
@@ -437,8 +438,6 @@ class WhiteboardWindow(QMainWindow):
             self.client.send(
                 b"TEXT--"
                 + message
-                + b"--"
-                + roomname.encode("ascii")
                 + b"--"
                 + text.encode("utf-8")
                 + b"\r\n"
@@ -489,7 +488,7 @@ class WhiteboardWindow(QMainWindow):
 
             message = xbytes + ybytes + T_bytes
             roomname = "test".encode("ascii")
-            self.client.send(b"PAINT--" + message + b"--" + roomname + b"\r\n")
+            self.client.send(b"PAINT--" + message + b"\r\n")
 
             # draw line from the last point of cursor to the current point
             # this will draw only one step
@@ -526,11 +525,10 @@ class WhiteboardWindow(QMainWindow):
     # method for clearing every thing on canvas
     def clear(self):
         # make the whole canvas white
-        roomname = "test".encode("ascii")
         T = 4
         T_bytes = T.to_bytes(1, byteorder="big")
         self.image.fill(Qt.white)
-        self.client.send(b"PAINT--xxxx" + T_bytes + b"--" + roomname + b"\r\n")
+        self.client.send(b"PAINT--xxxx" + T_bytes + b"\r\n")
         # update
         self.update()
 
