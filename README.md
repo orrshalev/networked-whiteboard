@@ -7,6 +7,8 @@
 
 ## Server
 
+Make sure that your working directory is `server`
+
 **Docker commands:**
 
 To build:
@@ -21,6 +23,8 @@ To run:
 	whiteboard-server`
 
 ## Client
+
+Make sure that your working directory is `client`
 
 **Docker commands:**
 
