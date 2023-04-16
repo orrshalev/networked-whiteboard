@@ -114,7 +114,8 @@ class LoginWindow(QWidget):
             self.wb_window.show()
             self.hide()
         elif data[:-2] == b"ERROR":
-            print("Maximum number of Users Reached, cannot log in")
+            self.error_window = ErrorWindow("Maximum number of Users Reached, cannot log in")
+            self.error_window.show()
 
 
 class ErrorWindow(QWidget):
@@ -165,15 +166,24 @@ class landingWindow(QWidget):
         self.create_whiteboard_button = QPushButton("Create New Whiteboard")
         self.create_whiteboard_button.clicked.connect(self.create_whiteboard)
         self.layout.addWidget(self.create_whiteboard_button)
-        self.layout.addWidget(QLabel("Please select a user to join their whiteboard:"))
+        self.layout.addWidget(QLabel("Active Users:"))
         self.user_list = QListWidget()
         self.layout.addWidget(self.user_list)
-        self.user_list.itemDoubleClicked.connect(self.join_user)
+        # self.user_list.itemDoubleClicked.connect(self.join_user)
+        self.layout.addWidget(QLabel("Inactive Users:"))
+        self.inactive_list = QListWidget()
+        self.layout.addWidget(self.inactive_list)
+
         self.layout.addWidget(
             QLabel("Please enter the name of a whiteboard to recover:")
         )
         self.recovery_input = QLineEdit()
+        self.recovery_input.setPlaceholderText("Whiteboard Name...")
         self.layout.addWidget(self.recovery_input)
+        self.password_input = QLineEdit()
+        self.password_input.setPlaceholderText("Password... (if applicable)")
+        self.password_input.setEchoMode(QLineEdit.Password)
+        self.layout.addWidget(self.password_input)
         self.recovery_button = QPushButton("Recover")
         self.recovery_button.clicked.connect(self.recover)
         self.layout.addWidget(self.recovery_button)
@@ -192,6 +202,12 @@ class landingWindow(QWidget):
         for user in users:
             self.user_list.addItem(user.decode("ascii"))
 
+        self.client.send(b'GETINACTIVEUSERS\r\n')
+        inactiveusers = self.client.recv(1024)
+        inactiveusers = inactiveusers.split(b"--")
+        for user in inactiveusers:
+            self.inactive_list.addItem(user.decode("ascii"))
+
         self.client.send(b"GETROOMS\r\n")
         rooms = self.client.recv(1024)
         rooms = rooms.split(b"--")
@@ -205,41 +221,87 @@ class landingWindow(QWidget):
         self.user_list.addItem(user_name)
 
     def join_whiteboard(self, whiteboard: QListWidgetItem):
-        # self.wb_window = WhiteboardWindow(self.client, whiteboard.text(), self)
-        # above does not properly use constructor; please fix
-        self.wb_window = WhiteboardWindow(self.client, self)
-        self.wb_window.hide()
-        # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
-        self.wb_window.show()
-        self.hide()
-        self.client.send(b"JOINROOM--" + whiteboard.text().encode('ascii') + b"\r\n")
+        password, ok = QInputDialog.getText(self, "Whiteboard Password", "Enter Password:", QLineEdit.Password)
+        if ok:
+            self.client.send(b"JOINROOM--" + whiteboard.text().encode('ascii') + b"--" + password.encode('ascii') + b"\r\n")
+            data = self.client.recv(1024)
+            if data[:-2] == b"OK":
+                self.wb_window = WhiteboardWindow(self.client, self)
+                self.wb_window.hide()
+                # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
+                self.wb_window.show()
+                self.hide()
+            elif data[:-2] == b"ERROR":
+                # QMessageBox.warning(self, "Error", "Incorrect Password")
+                self.error_window = ErrorWindow("Incorrect username/password")
+                self.error_window.show()
+        # self.wb_window = WhiteboardWindow(self.client, self)
+        # self.wb_window.hide()
+        # # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
+        # self.wb_window.show()
+        # self.hide()
+        # self.client.send(b"JOINROOM--" + whiteboard.text().encode('ascii') + b"\r\n")
 
-    def join_user(self, user):
-        self.wb_window = WhiteboardWindow(self.client, user.text())
-        self.wb_window.hide()
-        self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
-        self.wb_window.show()
-        self.hide()
+    # def join_user(self, user):
+    #     self.wb_window = WhiteboardWindow(self.client, user.text())
+    #     self.wb_window.hide()
+    #     self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
+    #     self.wb_window.show()
+    #     self.hide()
 
     # TODO : get user input for name
     def create_whiteboard(self):
-        self.wb_window = WhiteboardWindow(self.client, self)
-        self.wb_window.hide()
-        # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
-        self.wb_window.show()
-        self.hide()
-        self.client.send(b"CREATEROOM--test\r\n")
+        room_name, ok = QInputDialog.getText(self, "Create Whiteboard", "Enter Whiteboard Name:")
+        if ok:
+
+            password, ok = QInputDialog.getText(self, "Create Whiteboard", "Enter Password (optional):")
+            if ok:
+                command = b"CREATEROOM--" + room_name.encode('ascii')
+                if password:
+                    command += b"--" + password.encode('ascii')
+                command += b"\r\n"
+                print(command)
+                self.client.send(command)
+
+                data = self.client.recv(1024)
+                # print(data[:-2])
+                if data[:-2] == b"OK":
+                    self.wb_window = WhiteboardWindow(self.client, self)
+                    self.wb_window.hide()
+                    # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
+                    self.wb_window.show()
+                    self.hide()
+                elif data[:-2] == b"ERROR":
+                    # QMessageBox.warning(self, "Error", "Failed to create whiteboard")
+                    self.error_window = ErrorWindow("Incorrect username/password")
+                    self.error_window.show()
+        else:
+            return
+        # self.wb_window = WhiteboardWindow(self.client, self)
+        # self.wb_window.hide()
+        # # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
+        # self.wb_window.show()
+        # self.hide()
+        # self.client.send(b"CREATEROOM--test\r\n")
 
     def on_sub_window_confirm(self):
         self.show()
 
     def recover(self):
-        self.wb_window = WhiteboardWindow(self.client, self.recovery_input.text())
+        # self.wb_window = WhiteboardWindow(self.client, self.recovery_input.text())
+        # self.wb_window.hide()
+        # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
+        # self.wb_window.show()
+        # self.hide()
+        # self.ok_button.clicked.connect(self.close)
+        roomname = self.recovery_input.text()
+        password = self.password_input.text()
+        self.client.send(b"RECOVER" + b"--" + roomname.encode('ascii') + b"--" + password.encode('ascii') + b"\r\n")
+        self.wb_window = WhiteboardWindow(self.client, roomname, password)
         self.wb_window.hide()
         self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
         self.wb_window.show()
         self.hide()
-        self.ok_button.clicked.connect(self.close)
 
 
 # window class
@@ -266,6 +328,7 @@ class WhiteboardWindow(QMainWindow):
         self.worker.signals.pixel.connect(self.server_paint)
         self.worker.signals.text.connect(self.server_text)
         self.worker.signals.exit.connect(self.exit)
+        self.worker.signals.pixel_rgb.connect(self.server_paint_rgb)
         self.threadpool = QThreadPool()
         self.threadpool.start(self.worker)
 
@@ -351,11 +414,38 @@ class WhiteboardWindow(QMainWindow):
         self.l_window.show()
         self.client.send(b"EXIT\r\n")
         # TODO : Add going back to main menu
+        image = self.image
+        width = image.width()
+        height = image.height()
+        for x in range(width):
+            for y in range(height):
+                rgb = image.pixel(x, y)
+                red = (rgb >> 16) & 0xff
+                green = (rgb >> 8) & 0xff
+                blue = rgb & 0xff                
+                message = x.to_bytes(2, byteorder='big') + y + red.to_bytes(1, byteorder='big') + green + blue
+                self.client.send(b"SAVE" + b"--" + message + "\r\n")
+                
 
     def save_and_exit(self):
         self.hide()
         self.l_window.show()
         self.client.send(b"EXIT\r\n")
+        image = self.image
+        width = image.width()
+        height = image.height()
+        for x in range(width):
+            for y in range(height):
+                rgb = image.pixel(x, y)
+                # red = rgb.red()
+                # green = rgb.green()
+                # blue = rgb.blue()
+                red = (rgb >> 16) & 0xff
+                green = (rgb >> 8) & 0xff
+                blue = rgb & 0xff
+                print(red + "-" + green + "-" + blue)
+                message = x + y + red + green + blue
+                self.client.send(b"SAVE" + b"--" + message + "\r\n")
 
     def server_paint(self, message: bytes):
         x = int.from_bytes(message[:2], byteorder="big")
@@ -378,6 +468,9 @@ class WhiteboardWindow(QMainWindow):
         # text
         painter.drawPoint(x, y)
         self.update()
+
+    def server_paint_rgb(self, message: bytes):
+        pass
 
     def server_text(self, message: bytes):
         x = int.from_bytes(message[:2], byteorder="big")
