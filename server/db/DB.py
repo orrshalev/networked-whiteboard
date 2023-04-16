@@ -6,6 +6,7 @@ import datetime
 
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
+MAX_REGISTERED_USERS = 150
 
 
 # TODO: limit # of users that can be created
@@ -304,6 +305,12 @@ class DB:
         :param user[1]: non-hashed password
         :return: user id
         """
+        select_statement = """SELECT * FROM users"""
+        c.execute(select_statement)
+        rows = c.fetchall()
+        if rows > MAX_REGISTERED_USERS:
+            print("WARNING: MAXIMUM USERS ALLOWED TO REGISTER REACHED")
+            return
         salt = os.urandom(32)
         key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100000)
         sql = """ INSERT INTO users(username, password, salt)
