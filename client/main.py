@@ -114,7 +114,9 @@ class LoginWindow(QWidget):
             self.l_window.show()
             self.hide()
         elif data[:-2] == b"ERROR":
-            self.error_window = ErrorWindow("Maximum number of Users Reached, cannot log in")
+            self.error_window = ErrorWindow(
+                "Maximum number of Users Reached, cannot log in"
+            )
             self.error_window.show()
 
 
@@ -203,7 +205,7 @@ class landingWindow(QWidget):
         for user in users:
             self.user_list.addItem(user.decode("ascii"))
 
-        self.client.send(b'GETINACTIVEUSERS\r\n')
+        self.client.send(b"GETINACTIVEUSERS\r\n")
         inactiveusers = self.client.recv(1024)
         inactiveusers = inactiveusers.split(b"--")
         for user in inactiveusers:
@@ -222,9 +224,17 @@ class landingWindow(QWidget):
         self.user_list.addItem(user_name)
 
     def join_whiteboard(self, whiteboard: QListWidgetItem):
-        password, ok = QInputDialog.getText(self, "Whiteboard Password", "Enter Password:", QLineEdit.Password)
+        password, ok = QInputDialog.getText(
+            self, "Whiteboard Password", "Enter Password:", QLineEdit.Password
+        )
         if ok:
-            message = b"JOINROOM--" + whiteboard.text().encode('ascii')[:-2] + b"--" + password.encode('ascii') + b"\r\n"
+            message = (
+                b"JOINROOM--"
+                + whiteboard.text().encode("ascii")[:-2]
+                + b"--"
+                + password.encode("ascii")
+                + b"\r\n"
+            )
             self.client.send(message)
             data = self.client.recv(1024)
             if data[:-2] == b"OK":
@@ -253,14 +263,17 @@ class landingWindow(QWidget):
 
     # TODO : get user input for name
     def create_whiteboard(self):
-        room_name, ok = QInputDialog.getText(self, "Create Whiteboard", "Enter Whiteboard Name:")
+        room_name, ok = QInputDialog.getText(
+            self, "Create Whiteboard", "Enter Whiteboard Name:"
+        )
         if ok:
-
-            password, ok = QInputDialog.getText(self, "Create Whiteboard", "Enter Password (optional):")
+            password, ok = QInputDialog.getText(
+                self, "Create Whiteboard", "Enter Password (optional):"
+            )
             if ok:
-                command = b"CREATEROOM--" + room_name.encode('ascii')
+                command = b"CREATEROOM--" + room_name.encode("ascii")
                 if password:
-                    command += b"--" + password.encode('ascii')
+                    command += b"--" + password.encode("ascii")
                 command += b"\r\n"
                 self.client.send(command)
 
@@ -297,12 +310,24 @@ class landingWindow(QWidget):
         # self.ok_button.clicked.connect(self.close)
         roomname = self.recovery_input.text()
         password = self.password_input.text()
-        self.client.send(b"RECOVER" + b"--" + roomname.encode('ascii') + b"--" + password.encode('ascii') + b"\r\n")
-        self.wb_window = WhiteboardWindow(self.client, roomname, password)
-        self.wb_window.hide()
-        self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
-        self.wb_window.show()
-        self.hide()
+        self.client.send(
+            b"RECOVER"
+            + b"--"
+            + roomname.encode("ascii")
+            + b"--"
+            + password.encode("ascii")
+            + b"\r\n"
+        )
+        data = self.client.recv(1024)
+        if data[:-2] == b"OK":
+            self.wb_window = WhiteboardWindow(self.client, roomname)
+            self.wb_window.hide()
+            # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
+            self.wb_window.show()
+            self.hide()
+        elif data[:-2] == b"ERROR":
+            self.error_window = ErrorWindow("Incorrect roomname/password")
+            self.error_window.show()
 
 
 # window class
@@ -421,12 +446,17 @@ class WhiteboardWindow(QMainWindow):
         for x in range(width):
             for y in range(height):
                 rgb = image.pixel(x, y)
-                red = (rgb >> 16) & 0xff
-                green = (rgb >> 8) & 0xff
-                blue = rgb & 0xff                
-                message = x.to_bytes(2, byteorder='big') + y + red.to_bytes(1, byteorder='big') + green + blue
-                self.client.send(b"SAVE" + b"--" + message + "\r\n")
-                
+                red = (rgb >> 16) & 0xFF
+                green = (rgb >> 8) & 0xFF
+                blue = rgb & 0xFF
+                message = (
+                    x.to_bytes(2, byteorder="big")
+                    + y.to_bytes(2, byteorder="big")
+                    + red.to_bytes(1, byteorder="big")
+                    + green.to_bytes(1, byteorder="big")
+                    + blue.to_bytes(1, byteorder="big")
+                )
+                self.client.send(b"SAVE" + b"--" + message + b"\r\n")
 
     def save_and_exit(self):
         self.hide()
@@ -441,9 +471,9 @@ class WhiteboardWindow(QMainWindow):
                 # red = rgb.red()
                 # green = rgb.green()
                 # blue = rgb.blue()
-                red = (rgb >> 16) & 0xff
-                green = (rgb >> 8) & 0xff
-                blue = rgb & 0xff
+                red = (rgb >> 16) & 0xFF
+                green = (rgb >> 8) & 0xFF
+                blue = rgb & 0xFF
                 print(red + "-" + green + "-" + blue)
                 message = x + y + red + green + blue
                 self.client.send(b"SAVE" + b"--" + message + "\r\n")
@@ -524,11 +554,7 @@ class WhiteboardWindow(QMainWindow):
                 self.update()
 
             self.client.send(
-                b"TEXT--"
-                + message
-                + b"--"
-                + text.encode("utf-8")
-                + b"\r\n"
+                b"TEXT--" + message + b"--" + text.encode("utf-8") + b"\r\n"
             )
 
         # if left mouse button is pressed

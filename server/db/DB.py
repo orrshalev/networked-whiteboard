@@ -358,6 +358,15 @@ class DB:
 
         return [row[0] for row in rows]
 
+    def check_if_owner(self, username: str, roomname: str):
+        c = self.conn.cursor()
+        select_statement = """SELECT * 
+                              FROM rooms
+                              WHERE host = ?
+                              AND roomname = ? ;"""
+        c.execute(select_statement, (username, roomname))
+        rows = c.fetchall()
+        return len(rows) != 0
 
         
 

@@ -188,8 +188,14 @@ def handle_message(
     elif line[0].decode("ascii") == "RECOVER":
         roomname = line[1].decode("ascii")
         username = user.username
-        if db.room_joinable(roomname, username):
+        password = None if len(line) != 3 else line[2].decode("ascii")
+        if db.check_if_owner(username, roomname) and db.room_joinable(
+            roomname, username, password
+        ):
             db.join_room(username, roomname)
+            server.send(b"OK\r\n")
+        else:
+            server.send(b"ERROR\r\n")
 
 
 def client_thread(
