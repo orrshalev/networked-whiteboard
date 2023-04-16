@@ -16,6 +16,7 @@ lock = threading.Lock()  # both main and threads need access to lock
 SERVER_HOST = socket.gethostbyname(socket.gethostname())
 SERVER_PORT = 1500
 DEBUG = len(sys.argv) > 1 and sys.argv[1] == "DEBUG"
+MAX_CONNECTIONS = 100
 
 
 def splitlines_clrf(data: bytes) -> list[bytes]:
@@ -135,6 +136,7 @@ def client_thread(
     addr,
     user: User,
     connections: dict[str, tuple[socket.socket, str]],
+    connection_count: int
 ):
     """
     :param connections: Username to connection and roomname
@@ -168,7 +170,7 @@ def client_thread(
         else:
             data = last_line
 
-    # TODO: send confirmation
+    connection_count -= 1
     server.close()
 
 
@@ -191,17 +193,20 @@ def main():
     print("Listening...")
     # paint_handler goes outside while loop; should only have 1 exist
     connections: dict[str, tuple[socket.socket, str]] = {}
+    connection_count = 0
     while True:
-        connection, addr = server.accept()
-        user: User = User()
+        if connection_count < MAX_CONNECTIONS:
+            connection, addr = server.accept()
+            user: User = User()
 
-        # print_lock.acquire()
-        print(f"Connected to : {addr[0]} : {addr[1]}")
+            # print_lock.acquire()
+            print(f"Connected to : {addr[0]} : {addr[1]}")
 
-        client_listener = threading.Thread(
-            target=client_thread, args=(connection, addr, user, connections)
-        )
-        client_listener.start()
+            client_listener = threading.Thread(
+                target=client_thread, args=(connection, addr, user, connections, connection_count)
+            )
+            client_listener.start()
+            connection_count += 1
 
 
 if __name__ == "__main__":
