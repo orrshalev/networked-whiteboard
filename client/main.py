@@ -97,7 +97,6 @@ class LoginWindow(QWidget):
         self.l_window = landingWindow(self.client)
         self.l_window.hide()
 
-        print("gets here in signup")
         self.client.send(
             b"SIGNUP--"
             + username.encode("ascii")
@@ -170,7 +169,7 @@ class landingWindow(QWidget):
         self.user_list = QListWidget()
         self.layout.addWidget(self.user_list)
         # self.user_list.itemDoubleClicked.connect(self.join_user)
-        self.layout.addWidget(QLabel("Inactive Users:"))
+        self.layout.addWidget(QLabel("Registered Users:"))
         self.inactive_list = QListWidget()
         self.layout.addWidget(self.inactive_list)
 
@@ -238,27 +237,13 @@ class landingWindow(QWidget):
             if data[:-2] == b"OK":
                 self.wb_window = WhiteboardWindow(self.client, self)
                 self.wb_window.hide()
-                # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
                 self.wb_window.show()
                 self.hide()
             elif data[:-2] == b"ERROR":
-                # QMessageBox.warning(self, "Error", "Incorrect Password")
+                
                 self.error_window = ErrorWindow("Incorrect username/password")
                 self.error_window.show()
-        # self.wb_window = WhiteboardWindow(self.client, self)
-        # self.wb_window.hide()
-        # # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
-        # self.wb_window.show()
-        # self.hide()
-        # self.client.send(b"JOINROOM--" + whiteboard.text().encode('ascii') + b"\r\n")
-
-    # def join_user(self, user):
-    #     self.wb_window = WhiteboardWindow(self.client, user.text())
-    #     self.wb_window.hide()
-    #     self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
-    #     self.wb_window.show()
-    #     self.hide()
-
+        
     # TODO : get user input for name
     def create_whiteboard(self):
         room_name, ok = QInputDialog.getText(
@@ -276,15 +261,12 @@ class landingWindow(QWidget):
                 self.client.send(command)
 
                 data = self.client.recv(1024)
-                # print(data[:-2])
                 if data[:-2] == b"OK":
                     self.wb_window = WhiteboardWindow(self.client, self)
                     self.wb_window.hide()
-                    # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
                     self.wb_window.show()
                     self.hide()
                 elif data[:-2] == b"ERROR":
-                    # QMessageBox.warning(self, "Error", "Failed to create whiteboard")
                     self.error_window = ErrorWindow("Incorrect username/password")
                     self.error_window.show()
         else:
@@ -309,7 +291,6 @@ class landingWindow(QWidget):
         if data[:-2] == b"OK":
             self.wb_window = WhiteboardWindow(self.client, roomname)
             self.wb_window.hide()
-            # self.wb_window.submitClicked.connect(self.on_sub_window_confirm)
             self.wb_window.show()
             self.hide()
         elif data[:-2] == b"ERROR":
@@ -325,7 +306,6 @@ class WhiteboardWindow(QMainWindow):
     global textboxList
     textboxList = []
 
-    # submitClicked = qtc.pyqtSignal()
     def __init__(self, client, landing_window):
         super().__init__()
         self.client = client
@@ -359,8 +339,6 @@ class WhiteboardWindow(QMainWindow):
         self.brushSize = 4
         # default color
         self.brushColor = Qt.black
-
-        # QPoint object to tract the point
 
         # creating menu bar
         mainMenu = self.menuBar()
@@ -448,7 +426,10 @@ class WhiteboardWindow(QMainWindow):
                     + blue.to_bytes(1, byteorder="big")
                     + alpha.to_bytes(1, byteorder="big")
                 )
-                self.client.send(b"SAVE" + b"--" + message + b"\r\n")
+                if (red == 255 and green == 255 and blue == 255):
+                    continue
+                else:
+                    self.client.send(b"SAVE" + b"--" + message + b"\r\n")
         self.client.send(b"EXIT\r\n")
         sys.exit()
 
@@ -467,7 +448,10 @@ class WhiteboardWindow(QMainWindow):
                 blue = rgb & 0xFF
                 alpha = (rgb >> 24) & 0xFF
                 message = x.to_bytes(2, byteorder="big") + y.to_bytes(2, byteorder="big") + red.to_bytes(1, byteorder="big") + green.to_bytes(1, byteorder="big") + blue.to_bytes(1, byteorder="big") + alpha.to_bytes(1, byteorder="big")
-                self.client.send(b"SAVE" + b"--" + message + b"\r\n")
+                if (red == 255 and green == 255 and blue == 255):
+                    continue
+                else:
+                    self.client.send(b"SAVE" + b"--" + message + b"\r\n")
         self.client.send(b"EXIT\r\n")
         sys.exit()
 
@@ -595,7 +579,6 @@ class WhiteboardWindow(QMainWindow):
                 painter.setOpacity(0.1)
             x = event.x()
             y = event.y()
-            # print(f"Mouse moved at ({x}, {y})")
             xbytes = x.to_bytes(2, byteorder="big")
             ybytes = y.to_bytes(2, byteorder="big")
             if self.brushColor == Qt.black:
@@ -666,7 +649,6 @@ class WhiteboardWindow(QMainWindow):
     def textboxPlace(self):
         self.drawing = False
         self.text = True
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

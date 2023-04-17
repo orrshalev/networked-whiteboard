@@ -225,7 +225,8 @@ class DB:
             G_bytes = G.to_bytes(1, byteorder="big")
             B_bytes = B.to_bytes(1, byteorder="big")
             A_bytes = A.to_bytes(1, byteorder="big")
-            connection.send(b"PIXEL_RGB--" + X_bytes + Y_bytes + R_bytes + G_bytes + B_bytes + A_bytes + b"\r\n")
+            if R != 255 and G != 255 and B != 255:
+                connection.send(b"PIXEL_RGB--" + X_bytes + Y_bytes + R_bytes + G_bytes + B_bytes + A_bytes + b"\r\n")
         
         
 
@@ -257,8 +258,6 @@ class DB:
                               WHERE roomname = ? ;"""
         c.execute(select_statement, (roomname,))
         vals = c.fetchall()
-        for val in vals:
-            print(f"DEBUG STATEMENT: {val}")
 
         if len(vals) == 0:
             print("WARNING: ROOM NOT FOUND")

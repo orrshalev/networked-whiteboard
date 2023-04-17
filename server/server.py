@@ -246,10 +246,6 @@ def main():
     print(f"SERVER IP ADDRESS IS {SERVER_HOST}")
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    # TLS protocol
-    # server = ssl.wrap_socket(
-    #     server, server_side=True, keyfile="./tls/host.key", certfile="./tls/host.cert"
-    # )
 
     server.bind((SERVER_HOST, SERVER_PORT))
     print(f"socket binded to port {SERVER_PORT}")
