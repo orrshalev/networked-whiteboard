@@ -10,13 +10,14 @@ WINDOW_HEIGHT = 600
 MAX_REGISTERED_USERS = 150
 
 
-# TODO: limit # of users that can be created
 class DB:
     def __init__(self, db_file: str, debug=False):
         """
         establish persistent connection
         """
-        self.conn = sqlite3.connect(db_file)
+        self.conn = sqlite3.connect(
+            db_file, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
+        )
         self.DEBUG = debug
         self._debug_print()
 
@@ -37,6 +38,22 @@ class DB:
         """
         c = self.conn.cursor()
         c.execute(sql)
+
+    def update_exit_time(self, username: str):
+        c = self.conn.cursor()
+        select_statement = """SELECT * FROM rooms
+                              WHERE host = ? ;"""
+        c.execute(select_statement, (username,))
+        rows = c.fetchall()
+        if len(rows) == 0:
+            return
+
+        update_statement = """UPDATE rooms
+                              SET closed_at = ?
+                              WHERE host = ? ;"""
+        c.execute(update_statement, (datetime.datetime.now(), username))
+        self.conn.commit()
+        self._debug_print()
 
     def _create_rooms_table(self):
         c = self.conn.cursor()
@@ -91,12 +108,13 @@ class DB:
 
         select_statement = """SELECT * FROM rooms
                               WHERE host = ?"""
+        c.execute(select_statement, (username,))
         rows = c.fetchall()
         if len(rows) == 0:
             return
 
-        insert_statement = """INSERT INTO rooms(closed_at)
-                              VALUES (?)
+        insert_statement = """UPDATE rooms
+                              SET closed_at = ?
                               WHERE host = ? ;"""
         c.execute(insert_statement, (datetime.datetime.now(), username))
         self.conn.commit()
@@ -129,7 +147,6 @@ class DB:
         rows = c.fetchall()
         return [row[0] for row in rows]
 
-    # TODO add user verification
     def create_room(self, username: str, roomname: str, password: str = None):
         """
         Create a new room assigned to a host (user that created room)
@@ -263,27 +280,35 @@ class DB:
             return False
 
         # check timeout and password
-        # check if this works
-
-        # host did not leave; can join room
         key: str = vals[0][2]
         salt: str = vals[0][3]
         time: datetime.datetime = vals[0][0]
+        SECONDS_IN_HOUR = 3600
         if password and not key:
             return False
         if password:
-            new_key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100000)
-            return key == new_key and time is None
-        
+            new_key = hashlib.pbkdf2_hmac(
+                "sha256", password.encode("utf-8"), salt, 100000
+            )
+            if time:
+                time_passed: datetime.timedelta = datetime.datetime.now() - time
+                return (
+                    key == new_key
+                    and time_passed.total_seconds() < SECONDS_IN_HOUR
+                    and username == vals[0][1]
+                )
+            else:
+                return key == new_key
+
         if time is None:
             return True
 
         time_passed: datetime.timedelta = datetime.datetime.now() - time
-        SECONDS_IN_HOUR = 3600
         # not timed out
         if time_passed.total_seconds() < SECONDS_IN_HOUR and username == vals[0][1]:
             return True
 
+        # timed out
         drop_statement = f"""DROP TABLE IF EXISTS {roomname} ;"""
         c.execute(drop_statement)
         delete_statement = """DELETE FROM rooms
@@ -295,8 +320,6 @@ class DB:
                               WHERE roomname = ? ;"""
         c.execute(update_statement, (roomname,))
         return False
-
-        # TODO: send message to users to terminate their session
 
     def close_room(self, roomname: str):
         """
@@ -368,8 +391,6 @@ class DB:
         rows = c.fetchall()
         return len(rows) != 0
 
-        
-
     def check_user_credentials(self, username: str, password: str) -> bool:
         """
         Check if user credentials match a value in users table
@@ -402,6 +423,11 @@ class DB:
 
 
 def main():
+    """
+    Can set the state of the DB upon initialization of docker image from Here
+    using CLI
+    """
+
     def check_arg(length: int, arg: str):
         return len(sys.argv) == length and sys.argv[1] == arg
 

@@ -2,17 +2,11 @@ import socket
 from _thread import *
 import threading
 import sys
-from queue import Queue
-
 # all above from from stdlib
 from db.DB import DB
 
 DB_PATH = "./db/app.db"
 
-lock = threading.Lock()  # both main and threads need access to lock
-# for now getting rid of use of lock, might need later so keeping variable
-
-# may need to change this if need to be able to not user localhost
 SERVER_HOST = socket.gethostbyname(socket.gethostname())
 SERVER_PORT = 1500
 DEBUG = len(sys.argv) > 1 and sys.argv[1] == "DEBUG"
@@ -53,7 +47,6 @@ def handle_message(
     user: User,
 ):
     line: list[bytes] = line.split(b"--")
-    # data = data.decode("ascii", errors="ignore").split("-")
 
     if line[0].decode("ascii") == "LOGIN":
         username = line[1].decode("ascii")
@@ -143,7 +136,6 @@ def handle_message(
                 server.send(b"ERROR\r\n")
 
     elif line[0].decode("ascii") == "GETROOMS":
-        # TODO: create get_active_users function in db
         roomlist = [
             connections[username][1]
             for username in connections
@@ -156,7 +148,6 @@ def handle_message(
         message += b"\r\n"
         server.send(message)
     elif line[0].decode("ascii") == "GETUSERS":
-        # TODO: create get_user_list function in db
         userlist = [username for username in connections]
         message = b""
         for user in userlist:
@@ -165,7 +156,6 @@ def handle_message(
         message += b"\r\n"
         server.send(message)
     elif line[0].decode("ascii") == "GETINACTIVEUSERS":
-        # NOTE: This is copied straight from GETUSERS, need to touch up
         userlist = db.select_all_users()
         message = b""
         for user in userlist:
@@ -181,6 +171,7 @@ def handle_message(
             for connection, roomname in connections.values():
                 if roomname == user.roomname:
                     connection.send(b"EXIT\r\n")
+            db.update_exit_time(username)
         user.roomname = None
         user.is_host = False
     elif line[0].decode("ascii") == "SAVE":
@@ -193,6 +184,9 @@ def handle_message(
             roomname, username, password
         ):
             db.join_room(username, roomname)
+            connections[username] = (server, roomname)
+            user.roomname = roomname
+            user.is_host = True
             server.send(b"OK\r\n")
         else:
             server.send(b"ERROR\r\n")
@@ -217,18 +211,14 @@ def client_thread(
             print(f"Disconnecting user : {addr[0]} : {addr[1]}")
             db.remove_active_user(user.username)
             connections.pop(user.username, "NO USER FOUND")
-            # print_lock.release()
             break
-        # lines = data.split(keepends=True)
         lines = splitlines_clrf(data)
         if len(lines) == 0:
             print(f"Disconnecting user : {addr[0]} : {addr[1]}")
             db.remove_active_user(user.username)
             connections.pop(user.username, "NO USER FOUND")
-            # print_lock.release()
             break
         full_lines, last_line = lines[:-1], lines[-1]
-        # print(f"full_lines: {full_lines}, last_line: {last_line}")
         for line in full_lines:
             handle_message(line[:-2], server, connections, db, user)
         if last_line.endswith(b"\r\n"):
@@ -266,7 +256,6 @@ def main():
             connection, addr = server.accept()
             user: User = User()
 
-            # print_lock.acquire()
             print(f"Connected to : {addr[0]} : {addr[1]}")
 
             client_listener = threading.Thread(
