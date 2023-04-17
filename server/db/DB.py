@@ -11,6 +11,7 @@ MAX_REGISTERED_USERS = 150
 
 
 class DB:
+    """ This class is responsible for all database operations """
     def __init__(self, db_file: str, debug=False):
         """
         establish persistent connection
@@ -29,8 +30,6 @@ class DB:
             print("Here are the registered users:\n")
             self.select_all_users()
             print()
-            print("Here are the active users:\n")
-            self._select_all_active_users()
 
     def _raw_command(self, sql: str) -> None:
         """Will execute any command given; do not use outside of file sql: SQLite query
@@ -40,6 +39,7 @@ class DB:
         c.execute(sql)
 
     def update_exit_time(self, username: str):
+        """ Update the exit time of a user """
         c = self.conn.cursor()
         select_statement = """SELECT * FROM rooms
                               WHERE host = ? ;"""
@@ -56,6 +56,7 @@ class DB:
         self._debug_print()
 
     def _create_rooms_table(self):
+        """ Create the rooms table if it doesn't exist"""
         c = self.conn.cursor()
         rooms_schema = """CREATE TABLE IF NOT EXISTS rooms (
                     id INTEGER PRIMARY KEY,
@@ -160,16 +161,17 @@ class DB:
                         R INTEGER NOT NULL,
                         B INTEGER NOT NULL,
                         G INTEGER NOT NULL,
+                        A INTEGER NOT NULL,
                         PRIMARY KEY (x, y)
                     );
             """
             c = self.conn.cursor()
             c.execute(room_schema)
-            table_values = f"""INSERT INTO {roomname} VALUES (?, ?, ?, ?, ?)"""
+            table_values = f"""INSERT INTO {roomname} VALUES (?, ?, ?, ?, ?, ?)"""
             for x in range(WINDOW_WIDTH):
                 for y in range(WINDOW_HEIGHT):
                     c.execute(
-                        table_values, (x, y, 255, 255, 255)
+                        table_values, (x, y, 255, 255, 255, 255)
                     )  # Insert white to all
             self.conn.commit()
         except Exception:
@@ -191,43 +193,44 @@ class DB:
         self._debug_print()
 
     def update_room_pixel(self, roomname: str, paint_message: bytes) -> None:
+        
+        """ Update the pixel in the room table """
         c = self.conn.cursor()
-
-        select_statement = """SELECT * FROM rooms WHERE roomname = ? ;"""
-        c.execute(select_statement, (roomname,))
-        rows = c.fetchall()
-        if len(rows) == 0:
-            print(
-                "WARNING: PAINT MESSAGE SENT TO ROOM THAT WAS NOT FOUND IN rooms TABLE"
-            )
-            return
-
-        x = int.from_bytes(paint_message[:2], byteorder="big")
+        update_statement = f"""UPDATE {roomname}
+                               SET R = ?,
+                                   G = ?,
+                                   B = ?,
+                                   A = ?
+                               WHERE x = ? AND y = ?"""
+        x = int.from_bytes(paint_message[0:2], byteorder="big")
         y = int.from_bytes(paint_message[2:4], byteorder="big")
-        T = paint_message[4]
-        # T = 4 means CLEAR
-        if T == 4:
-            update_statement = f"""UPDATE {roomname}
-                                   SET T = 3"""
-            c.execute(update_statement)
-        else:
-            update_statement = f"""UPDATE {roomname}
-                                   SET T = ?
-                                   WHERE x = ? AND y = ? ;"""
-            c.execute(update_statement, (T, x, y))
+        R = int.from_bytes(paint_message[4:5], byteorder="big")
+        G = int.from_bytes(paint_message[5:6], byteorder="big")
+        B = int.from_bytes(paint_message[6:7], byteorder="big")
+        A = int.from_bytes(paint_message[7:8], byteorder="big")
+        c.execute(update_statement, (R, G, B, A, x, y))
         self.conn.commit()
 
-    def _get_room_pixel(self, roomname: str, x: int, y: int):
+    def send_room_pixels(self, roomname: str, connection: socket.socket) -> None:
+        """ Send the pixel to the client """
         c = self.conn.cursor()
-        select_statement = f"""SELECT *
-                               FROM {roomname}
-                               WHERE x = ? AND y = ?"""
-        c.execute(select_statement, (x, y))
+        select_statement = f"""SELECT X, Y, R, B, G, A
+                               FROM {roomname}"""
+        c.execute(select_statement)
         rows = c.fetchall()
-        for row in rows:
-            print(row)
+        for X, Y, R, B, G, A in rows:
+            X_bytes = X.to_bytes(2, byteorder="big")
+            Y_bytes = Y.to_bytes(2, byteorder="big")
+            R_bytes = R.to_bytes(1, byteorder="big")
+            G_bytes = G.to_bytes(1, byteorder="big")
+            B_bytes = B.to_bytes(1, byteorder="big")
+            A_bytes = A.to_bytes(1, byteorder="big")
+            connection.send(b"PIXEL_RGB--" + X_bytes + Y_bytes + R_bytes + G_bytes + B_bytes + A_bytes + b"\r\n")
+        
+        
 
     def _check_room(self, roomname: str):
+        """ Check if room exists """
         c = self.conn.cursor()
         c.execute(f"SELECT * FROM {roomname}")
 
@@ -238,6 +241,7 @@ class DB:
         print(f"Number of pixels: {len(rows)}")
 
     def host_disconnected(self, roomname: str):
+        """ Set the room to recovery mode """
         c = self.conn.cursor()
         update_statement = """UPDATE rooms
                               SET closed_at = ?
@@ -246,6 +250,7 @@ class DB:
         self.conn.commit()
 
     def room_paintable(self, roomname: str) -> bool:
+        """ Check if room is in recovery mode """
         c = self.conn.cursor()
         select_statement = """SELECT closed_at
                               FROM rooms
@@ -295,7 +300,6 @@ class DB:
                 return (
                     key == new_key
                     and time_passed.total_seconds() < SECONDS_IN_HOUR
-                    and username == vals[0][1]
                 )
             else:
                 return key == new_key

@@ -34,6 +34,7 @@ def splitlines_clrf(data: bytes) -> list[bytes]:
 
 
 class User:
+    """ User class """
     username: str = None
     roomname: str = None
     is_host: bool = False
@@ -46,6 +47,7 @@ def handle_message(
     db: DB,
     user: User,
 ):
+    """ Handle message from client """
     line: list[bytes] = line.split(b"--")
 
     if line[0].decode("ascii") == "LOGIN":
@@ -117,13 +119,16 @@ def handle_message(
         )
         if users_in_room > MAX_ROOMS_OPEN:
             return
+        print(line)
         if len(line) == 3:
             password = line[2].decode("ascii")
+            print(password)
             if db.room_joinable(roomname, username, password):
                 db.join_room(username, roomname)
                 connections[username] = (server, roomname)
                 user.roomname = roomname
                 server.send(b"OK\r\n")
+                db.send_room_pixels(roomname, server)
             else:
                 server.send(b"ERROR\r\n")
         else:
@@ -132,6 +137,7 @@ def handle_message(
                 connections[username] = (server, roomname)
                 user.roomname = roomname
                 server.send(b"OK\r\n")
+                db.send_room_pixels(roomname, server)
             else:
                 server.send(b"ERROR\r\n")
 
@@ -168,15 +174,19 @@ def handle_message(
         connections[username] = (server, None)
         server.send(b"EXIT\r\n")
         if user.is_host:
-            for connection, roomname in connections.values():
-                if roomname == user.roomname:
+            for username in connections:
+                connection, roomname = connections[username]
+                if roomname == user.roomname and username != user.username:
                     connection.send(b"EXIT\r\n")
             db.update_exit_time(username)
         user.roomname = None
         user.is_host = False
     elif line[0].decode("ascii") == "SAVE":
-        pass
+        roomname = user.roomname
+        message = line[1]
+        db.update_room_pixel(roomname, message)
     elif line[0].decode("ascii") == "RECOVER":
+        # send_room_pixel
         roomname = line[1].decode("ascii")
         username = user.username
         password = None if len(line) != 3 else line[2].decode("ascii")
@@ -188,6 +198,7 @@ def handle_message(
             user.roomname = roomname
             user.is_host = True
             server.send(b"OK\r\n")
+            db.send_room_pixels(roomname, server)
         else:
             server.send(b"ERROR\r\n")
 
