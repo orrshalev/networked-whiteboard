@@ -468,14 +468,12 @@ class WhiteboardWindow(QMainWindow):
         for x in range(width):
             for y in range(height):
                 rgb = image.pixel(x, y)
-                # red = rgb.red()
-                # green = rgb.green()
-                # blue = rgb.blue()
                 red = (rgb >> 16) & 0xFF
                 green = (rgb >> 8) & 0xFF
                 blue = rgb & 0xFF
+                alpha = (rgb >> 24) & 0xFF
                 print(red + "-" + green + "-" + blue)
-                message = x + y + red + green + blue
+                message = x.to_bytes(2, byteorder="big") + y.to_bytes(2, byteorder="big") + red.to_bytes(1, byteorder="big") + green.to_bytes(1, byteorder="big") + blue.to_bytes(1, byteorder="big") + alpha.to_bytes(1, byteorder="big")
                 self.client.send(b"SAVE" + b"--" + message + "\r\n")
 
     def server_paint(self, message: bytes):
@@ -501,7 +499,16 @@ class WhiteboardWindow(QMainWindow):
         self.update()
 
     def server_paint_rgb(self, message: bytes):
-        pass
+        x = int.from_bytes(message[:2], byteorder="big")
+        y = int.from_bytes(message[2:4], byteorder="big")
+        red = int.from_bytes(message[4:5], byteorder="big")
+        green = int.from_bytes(message[5:6], byteorder="big")
+        blue = int.from_bytes(message[6:7], byteorder="big")
+        alpha = int.from_bytes(message[7:8], byteorder="big")
+        painter = QPainter(self.image)
+        painter.setPen(QPen(QColor(red, green, blue, alpha), 4, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        painter.drawPoint(x, y)
+        self.update()
 
     def server_text(self, message: bytes):
         x = int.from_bytes(message[:2], byteorder="big")
