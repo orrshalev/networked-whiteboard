@@ -1,5 +1,20 @@
 # Multiplayer Whiteboard
 
+
+![networking whiteboard demo](https://user-images.githubusercontent.com/78034726/236699634-b8005eef-5ea6-492e-894b-224bd583aa5b.gif)
+
+## Overview
+
+A server-client application written in Python which utilizes socket programming, virtual networking with Docker, and GUI programming with the PyQT framework. 
+
+This is a colleberative project as part of the University of Georgia's Master's level networking course. collaborators include:
+
+| Name              |
+| ----------------- |
+| Orr Shalev        |
+| Devan Allen       |
+| Mitchel Castleton |
+
 ## Dependencies
 
 - Docker must be installed and the docker daemon must be running
@@ -22,8 +37,6 @@ To run:
 	--network whiteboard-network
 	--publish 1500:1500
 	whiteboard-server`
-
-## Client
 
 Make sure that your working directory is `client`
 
