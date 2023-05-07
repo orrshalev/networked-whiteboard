@@ -7,7 +7,7 @@
 
 A server-client application written in Python which utilizes socket programming, virtual networking with Docker, and GUI programming with the PyQT framework. 
 
-This is a colleberative project as part of the University of Georgia's Master's level networking course. collaborators include:
+This is a collaborative project as part of the University of Georgia's Master's level networking course. collaborators include:
 
 | Name              |
 | ----------------- |
