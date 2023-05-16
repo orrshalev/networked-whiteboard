@@ -1,7 +1,7 @@
 import socket
-from _thread import *
-import threading
 import sys
+import threading
+
 # all above from from stdlib
 from db.DB import DB
 
@@ -19,7 +19,7 @@ def splitlines_clrf(data: bytes) -> list[bytes]:
     """
     More guranteed safety that lines will split based on \r\n ONLY than build in splitlines
     """
-    lines = []
+    lines: list[bytes] = []
     start = 0
     while True:
         end = data.find(b"\r\n", start)
@@ -34,9 +34,10 @@ def splitlines_clrf(data: bytes) -> list[bytes]:
 
 
 class User:
-    """ User class """
-    username: str = None
-    roomname: str = None
+    """User class"""
+
+    username: str
+    roomname: str
     is_host: bool = False
 
 
@@ -47,7 +48,7 @@ def handle_message(
     db: DB,
     user: User,
 ):
-    """ Handle message from client """
+    """Handle message from client"""
     line: list[bytes] = line.split(b"--")
 
     if line[0].decode("ascii") == "LOGIN":
@@ -83,6 +84,7 @@ def handle_message(
         for connection, paint_roomname in connections.values():
             if paint_roomname == user.roomname:
                 connection.send(b"TEXT--" + message + b"--" + text + b"\r\n")
+
     elif line[0].decode("ascii") == "CREATEROOM":
         username = user.username
         roomname = line[1].decode("ascii")
@@ -121,7 +123,7 @@ def handle_message(
             return
         print(line)
         if len(line) == 3:
-            password = line[2].decode("ascii")
+            password = line[2].decode(("ascii"))
             print(password)
             if db.room_joinable(roomname, username, password):
                 db.join_room(username, roomname)

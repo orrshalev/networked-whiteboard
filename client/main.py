@@ -20,7 +20,8 @@ SERVER_PORT = 1500
 
 
 class LoginWindow(QWidget):
-    """ Create a login window for the client to log in. """
+    """Create a login window for the client to log in."""
+
     # client: SSLSocket
 
     def __init__(self):
@@ -118,7 +119,8 @@ class LoginWindow(QWidget):
 
 
 class ErrorWindow(QWidget):
-    """ Create a window that pops up when there is an error. """
+    """Create a window that pops up when there is an error."""
+
     def __init__(self, message):
         super().__init__()
 
@@ -240,10 +242,9 @@ class landingWindow(QWidget):
                 self.wb_window.show()
                 self.hide()
             elif data[:-2] == b"ERROR":
-                
                 self.error_window = ErrorWindow("Incorrect username/password")
                 self.error_window.show()
-        
+
     # TODO : get user input for name
     def create_whiteboard(self):
         room_name, ok = QInputDialog.getText(
@@ -276,7 +277,7 @@ class landingWindow(QWidget):
         self.show()
 
     def recover(self):
-        """ Recover a whiteboard """
+        """Recover a whiteboard"""
         roomname = self.recovery_input.text()
         password = self.password_input.text()
         self.client.send(
@@ -298,11 +299,11 @@ class landingWindow(QWidget):
             self.error_window.show()
 
 
-
 class WhiteboardWindow(QMainWindow):
-    """ Whiteboard Window Class
-         this class is the main whiteboard window where the user can draw and type text
+    """Whiteboard Window Class
+    this class is the main whiteboard window where the user can draw and type text
     """
+
     global textboxList
     textboxList = []
 
@@ -404,7 +405,7 @@ class WhiteboardWindow(QMainWindow):
         self.threadpool.start(self.worker)
 
     def exit(self):
-        """ Exit the whiteboard """
+        """Exit the whiteboard"""
         self.hide()
         self.l_window.show()
         # TODO : Add going back to main menu
@@ -426,7 +427,7 @@ class WhiteboardWindow(QMainWindow):
                     + blue.to_bytes(1, byteorder="big")
                     + alpha.to_bytes(1, byteorder="big")
                 )
-                if (red == 255 and green == 255 and blue == 255):
+                if red == 255 and green == 255 and blue == 255:
                     continue
                 else:
                     self.client.send(b"SAVE" + b"--" + message + b"\r\n")
@@ -434,7 +435,7 @@ class WhiteboardWindow(QMainWindow):
         sys.exit()
 
     def save(self):
-        """ Save and exit the whiteboard """
+        """Save and exit the whiteboard"""
         self.hide()
         self.l_window.show()
         image = self.image
@@ -447,8 +448,15 @@ class WhiteboardWindow(QMainWindow):
                 green = (rgb >> 8) & 0xFF
                 blue = rgb & 0xFF
                 alpha = (rgb >> 24) & 0xFF
-                message = x.to_bytes(2, byteorder="big") + y.to_bytes(2, byteorder="big") + red.to_bytes(1, byteorder="big") + green.to_bytes(1, byteorder="big") + blue.to_bytes(1, byteorder="big") + alpha.to_bytes(1, byteorder="big")
-                if (red == 255 and green == 255 and blue == 255):
+                message = (
+                    x.to_bytes(2, byteorder="big")
+                    + y.to_bytes(2, byteorder="big")
+                    + red.to_bytes(1, byteorder="big")
+                    + green.to_bytes(1, byteorder="big")
+                    + blue.to_bytes(1, byteorder="big")
+                    + alpha.to_bytes(1, byteorder="big")
+                )
+                if red == 255 and green == 255 and blue == 255:
                     continue
                 else:
                     self.client.send(b"SAVE" + b"--" + message + b"\r\n")
@@ -456,7 +464,7 @@ class WhiteboardWindow(QMainWindow):
         sys.exit()
 
     def server_paint(self, message: bytes):
-        """ Paint on the whiteboard """
+        """Paint on the whiteboard"""
         x = int.from_bytes(message[:2], byteorder="big")
         y = int.from_bytes(message[2:4], byteorder="big")
         T = message[4]
@@ -479,7 +487,7 @@ class WhiteboardWindow(QMainWindow):
         self.update()
 
     def server_paint_rgb(self, message: bytes):
-        """ Paint on the whiteboard """
+        """Paint on the whiteboard"""
         x = int.from_bytes(message[:2], byteorder="big")
         y = int.from_bytes(message[2:4], byteorder="big")
         red = int.from_bytes(message[4:5], byteorder="big")
@@ -487,12 +495,20 @@ class WhiteboardWindow(QMainWindow):
         blue = int.from_bytes(message[6:7], byteorder="big")
         alpha = int.from_bytes(message[7:8], byteorder="big")
         painter = QPainter(self.image)
-        painter.setPen(QPen(QColor(red, green, blue, alpha), 4, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        painter.setPen(
+            QPen(
+                QColor(red, green, blue, alpha),
+                4,
+                Qt.SolidLine,
+                Qt.RoundCap,
+                Qt.RoundJoin,
+            )
+        )
         painter.drawPoint(x, y)
         self.update()
 
     def server_text(self, message: bytes):
-        """ Place text on the whiteboard """
+        """Place text on the whiteboard"""
         x = int.from_bytes(message[:2], byteorder="big")
         y = int.from_bytes(message[2:4], byteorder="big")
         text = message[4:].decode("utf-8")
@@ -506,7 +522,7 @@ class WhiteboardWindow(QMainWindow):
         self.update()
 
     def handle_data_received(self, data):
-        """ Handle data received from the server """
+        """Handle data received from the server"""
         if data[:-2] == b"OK":
             print("The pixels work")
         elif data[:-2] == b"ERROR":
@@ -515,7 +531,7 @@ class WhiteboardWindow(QMainWindow):
 
     # method for checking mouse clicks
     def mousePressEvent(self, event):
-        """ Handle mouse press events """
+        """Handle mouse press events"""
         # x,y
 
         if event.button() == Qt.LeftButton and self.text == True:
@@ -556,7 +572,7 @@ class WhiteboardWindow(QMainWindow):
 
     # method for tracking mouse activity
     def mouseMoveEvent(self, event):
-        """ Handle mouse move events """
+        """Handle mouse move events"""
         # checking if left button is pressed and drawing flag is true
         if (event.buttons() & Qt.LeftButton) & self.drawing:
             # creating painter object
@@ -592,7 +608,7 @@ class WhiteboardWindow(QMainWindow):
                 T_bytes = T.to_bytes(1, byteorder="big")
 
             message = xbytes + ybytes + T_bytes
-    
+
             self.client.send(b"PAINT--" + message + b"\r\n")
 
             # draw line from the last point of cursor to the current point
@@ -611,7 +627,7 @@ class WhiteboardWindow(QMainWindow):
 
     # paint event
     def paintEvent(self, event):
-        """ Paint the image to the canvas """
+        """Paint the image to the canvas"""
         # create a canvas
         canvasPainter = QPainter(self)
 
@@ -620,7 +636,7 @@ class WhiteboardWindow(QMainWindow):
 
     # method for clearing every thing on canvas
     def clear(self):
-        """ Clear the whole canvas """
+        """Clear the whole canvas"""
         # make the whole canvas white
         T = 4
         T_bytes = T.to_bytes(1, byteorder="big")
@@ -630,6 +646,7 @@ class WhiteboardWindow(QMainWindow):
         self.update()
 
     """ Methods for changing brush color"""
+
     def blackColor(self):
         self.text = False
         self.brushColor = Qt.black
@@ -649,6 +666,7 @@ class WhiteboardWindow(QMainWindow):
     def textboxPlace(self):
         self.drawing = False
         self.text = True
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
