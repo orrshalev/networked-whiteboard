@@ -1,12 +1,13 @@
-import select
-import sys
 import os
+import select
 import socket
 import ssl
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
+import sys
 from ssl import SSLSocket
+
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 from QTWorkers import Worker
 
 """ check if the correct number of arguments are passed in. """
@@ -384,8 +385,8 @@ class WhiteboardWindow(QMainWindow):
         # adding methods to the black
         black.triggered.connect(self.blackColor)
 
-        # POTENTIAL CODE FOR ERASER
-        # similarly repeating above steps for different color
+        	# POTENTIAL CODE FOR ERASER
+# similarly repeating above steps for different color
         white = QAction("Eraser", self)
         eraser.addAction(white)
         white.triggered.connect(self.whiteColor)
@@ -447,7 +448,7 @@ class WhiteboardWindow(QMainWindow):
                 red = (rgb >> 16) & 0xFF
                 green = (rgb >> 8) & 0xFF
                 blue = rgb & 0xFF
-                alpha = (rgb >> 24) & 0xFF
+		alpha = (rgb >> 24) & 0xFF
                 message = (
                     x.to_bytes(2, byteorder="big")
                     + y.to_bytes(2, byteorder="big")
